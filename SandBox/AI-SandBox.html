@@ -1,0 +1,3232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sandbox AI — Живой симулятор мира</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-card: #334155;
+      --bg-input: #0f172a;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --accent-ai: #8b5cf6;
+      --accent-ai-hover: #7c3aed;
+      --possess: #10b981;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: var(--bg-dark); color: var(--text-main); height: 100vh; width: 100vw; overflow: hidden; display: flex; flex-direction: column; }
+    header { min-height: 54px; background: var(--bg-panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; flex-shrink: 0; z-index: 10; gap: 8px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .brand h1 { font-size: 17px; font-weight: 700; background: linear-gradient(90deg, #60a5fa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap; }
+    .world-badges { display: flex; gap: 6px; font-size: 12px; align-items: center; flex-wrap: wrap; }
+    .badge { background: var(--bg-dark); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
+    .badge strong { color: var(--text-main); }
+    .badge.clickable-badge { cursor: pointer; border-color: #3b82f6; background: rgba(59, 130, 246, 0.12); transition: 0.15s; }
+    .badge.clickable-badge:hover { background: rgba(59, 130, 246, 0.28); }
+    .badge.possess-badge { border-color: var(--possess); background: rgba(16, 185, 129, 0.15); color: #a7f3d0; display: none; }
+    .header-actions { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+    button { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+    button:hover { background: #475569; }
+    button.primary { background: var(--accent); border-color: var(--accent); }
+    button.primary:hover { background: var(--accent-hover); }
+    button.ai-btn { background: var(--accent-ai); border-color: var(--accent-ai); font-weight: 600; }
+    button.ai-btn:hover { background: var(--accent-ai-hover); }
+    button.possess-btn { background: rgba(16, 185, 129, 0.2); border-color: var(--possess); color: #6ee7b7; font-weight: 600; }
+    button.possess-btn:hover, button.possess-btn.active { background: var(--possess); color: #fff; }
+    button.danger { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: #fca5a5; }
+    button.danger:hover { background: var(--danger); color: white; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .workspace { display: flex; flex: 1; overflow: hidden; }
+    .left-panel { width: 305px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 10px; gap: 12px; flex-shrink: 0; }
+    .panel-section { background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .panel-section h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+    .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .tool-btn { justify-content: center; padding: 7px; font-weight: 500; }
+    .tool-btn.active { background: var(--accent); border-color: var(--accent); }
+    label { font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 3px; }
+    input[type="text"], input[type="password"], input[type="number"], select, textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 7px 9px; border-radius: 6px; font-size: 12.5px; outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 58px; }
+    .color-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .color-preset { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
+    .center-area { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+    .map-container { flex: 1; position: relative; background: #090d16; overflow: hidden; cursor: grab; }
+    .map-container.crosshair { cursor: crosshair; }
+    canvas { display: block; }
+    .map-hud { position: absolute; top: 10px; left: 10px; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(4px); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; font-size: 12px; pointer-events: none; display: flex; flex-direction: column; gap: 3px; }
+    .map-controls-overlay { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; }
+    .ai-loading-banner { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(139, 92, 246, 0.95); color: white; padding: 10px 20px; border-radius: 999px; font-weight: 600; font-size: 13.5px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5); display: none; align-items: center; gap: 10px; z-index: 20; }
+    .spinner { width: 16px; height: 16px; border: 2px solid #ffffff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .possession-bar { background: linear-gradient(90deg, rgba(16, 185, 129, 0.22), rgba(59, 130, 246, 0.18)); border-top: 1px solid var(--possess); padding: 7px 14px; display: none; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+    .possession-bar.active { display: flex; }
+    .bottom-panel { background: var(--bg-panel); border-top: 1px solid var(--border); padding: 10px 14px; display: flex; gap: 12px; align-items: stretch; flex-shrink: 0; }
+    .command-box { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .command-box textarea { min-height: 60px; height: 60px; }
+    .sim-controls { display: flex; flex-direction: column; justify-content: space-between; width: 440px; gap: 6px; }
+    .sim-settings-row { display: flex; gap: 6px; align-items: center; }
+    .sim-settings-row > div { flex: 1; }
+    .right-panel { width: 440px; background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .tabs { display: grid; grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--border); background: var(--bg-dark); }
+    .tab-btn { border: none; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; padding: 9px 2px; font-size: 11px; justify-content: center; color: var(--text-muted); }
+    .tab-btn.active { color: var(--text-main); border-bottom-color: var(--accent); background: var(--bg-panel); font-weight: 600; }
+    .tab-content { flex: 1; overflow-y: auto; padding: 12px; display: none; flex-direction: column; gap: 10px; }
+    .tab-content.active { display: flex; }
+    .card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .card.clickable-char { cursor: pointer; transition: border-color 0.15s; }
+    .card.clickable-char:hover { border-color: var(--accent); }
+    .card.possessed-card { border-color: var(--possess); box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4); }
+    .card.dead-card { opacity: 0.75; border-color: #64748b; background: rgba(15, 23, 42, 0.6); }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+    .card-title { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .tag { font-size: 10.5px; padding: 2px 6px; border-radius: 4px; background: var(--bg-card); color: var(--text-muted); white-space: nowrap; }
+    .stat-badge-list { display: flex; flex-direction: column; gap: 4px; margin-top: 2px; }
+    .stat-pill { font-size: 11.5px; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--border); color: #cbd5e1; padding: 3px 7px; border-radius: 5px; line-height: 1.35; }
+    .stat-pill strong { color: #93c5fd; }
+    .rel-pill { font-size: 11.5px; background: rgba(236, 72, 153, 0.12); border: 1px solid rgba(236, 72, 153, 0.35); color: #fbcfe8; padding: 3px 7px; border-radius: 5px; }
+    .card-desc { font-size: 12.5px; color: #cbd5e1; line-height: 1.4; white-space: pre-wrap; }
+    .dialog-msg { background: rgba(51, 65, 85, 0.45); padding: 6px 10px; border-radius: 6px; font-size: 12px; border-left: 3px solid var(--accent); }
+    .dialog-msg.mine { border-left-color: var(--possess); background: rgba(16, 185, 129, 0.12); }
+    .dialog-msg strong { color: #93c5fd; }
+    .dialog-msg.mine strong { color: #6ee7b7; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 100; }
+    .modal-backdrop.active { display: flex; }
+    .modal { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; width: 650px; max-width: 95vw; max-height: 92vh; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .modal-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .empty-state { text-align: center; color: var(--text-muted); font-size: 12.5px; padding: 20px 10px; }
+    .small-hint { font-size: 11px; color: var(--text-muted); line-height: 1.35; }
+    .lock-btn { padding: 4px 7px; font-size: 11px; border-radius: 4px; cursor: pointer; user-select: none; white-space: nowrap; }
+    .lock-btn.static { background: rgba(245, 158, 11, 0.2); border-color: #f59e0b; color: #fde68a; }
+    .lock-btn.dynamic { background: rgba(16, 185, 129, 0.18); border-color: #10b981; color: #a7f3d0; }
+    .clock-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .preset-card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 12px; cursor: pointer; transition: 0.15s; display: flex; flex-direction: column; gap: 4px; }
+    .preset-card:hover { border-color: var(--accent-ai); background: rgba(139, 92, 246, 0.1); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>🌌 Sandbox AI</h1>
+      <div class="world-badges">
+        <div class="badge">Мир: <strong id="ui-world-name">Новый мир</strong></div>
+        <div class="badge clickable-badge" onclick="openModal('scale-modal')" title="Изменить размер карты и масштаб 1 клетки">
+          🗺️ <strong id="ui-grid-badge" style="color:#93c5fd;">150×150 (1 кл.=1 км)</strong>
+        </div>
+        <div class="badge">Ход: <strong id="ui-turn-count">0</strong></div>
+        <div class="badge clickable-badge" onclick="openModal('time-modal')" title="Изменить дату, время (ГГ:ММ:ДД:ЧЧ) и погоду">
+          🕒 <strong id="ui-world-time" style="color:#93c5fd; font-family:monospace;">1200:05:01:08</strong>
+        </div>
+        <div class="badge clickable-badge" onclick="cycleWeatherQuick()" title="Нажми, чтобы сменить погоду">
+          <strong id="ui-weather-badge">☀️ Ясно</strong>
+        </div>
+        <div class="badge possess-badge" id="ui-possess-badge">🕹️ Вы: <strong id="ui-possess-header-name">—</strong></div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-undo" onclick="undoLastTurn()" disabled title="Откатить состояние мира на 1 шаг назад">⏪ Откат (0)</button>
+      <button class="ai-btn" onclick="openModal('presets-modal')">📦 Пресеты миров</button>
+      <button onclick="openModal('scale-modal')">📐 Масштаб</button>
+      <button onclick="openModal('time-modal')">🕒 Время</button>
+      <button onclick="openModal('setting-modal')">🌍 Сеттинг и ИИ</button>
+      <button onclick="openModal('api-modal')">⚙️ API</button>
+      <button onclick="exportWorld()" title="Скачать сохранение .json">💾</button>
+      <button onclick="document.getElementById('import-file').click()" title="Загрузить .json">📂</button>
+      <input type="file" id="import-file" style="display:none" accept=".json" onchange="importWorld(event)" />
+      <button class="danger" onclick="resetWorld()" title="Очистить мир">🗑️</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- ЛЕВАЯ ПАНЕЛЬ -->
+    <aside class="left-panel">
+      <div class="panel-section">
+        <h3>🛠️ Инструмент карты</h3>
+        <div class="tool-grid">
+          <button id="tool-inspect" class="tool-btn active" onclick="setTool('inspect')">🔍 Выбор клетки</button>
+          <button id="tool-pan" class="tool-btn" onclick="setTool('pan')">✋ Камера</button>
+          <button id="tool-brush" class="tool-btn" onclick="setTool('brush')">🖌️ Кисть</button>
+          <button id="tool-rect" class="tool-btn" onclick="setTool('rect')">⬛ Квадрат</button>
+        </div>
+        <div class="small-hint">💡 <b>Колёсико</b> — зум. <b>ПКМ / Пробел</b> — двигать камеру. Стрелки показывают пути за ход.</div>
+      </div>
+
+      <div class="panel-section">
+        <h3>🎨 Рисование и Заполнение зоны</h3>
+        <div class="small-hint">Выбрано клеток: <strong id="selected-cells-count">0</strong></div>
+        <div style="display:flex; gap:6px;">
+          <div style="width:75px;">
+            <label>Радиус</label>
+            <input type="number" id="brush-size" min="1" max="15" value="1" />
+          </div>
+          <div style="flex:1;">
+            <label>Фракция территории</label>
+            <select id="paint-faction-select">
+              <option value="">Без фракции (Нейтральная)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label>Цвет местности на карте</label>
+          <div class="color-row">
+            <input type="color" id="paint-color" value="#22c55e" style="width:32px; height:24px; padding:0; border:none; background:none; cursor:pointer;" />
+            <div class="color-preset" style="background:#22c55e" onclick="setPaintColor('#22c55e')"></div>
+            <div class="color-preset" style="background:#eab308" onclick="setPaintColor('#eab308')"></div>
+            <div class="color-preset" style="background:#64748b" onclick="setPaintColor('#64748b')"></div>
+            <div class="color-preset" style="background:#0ea5e9" onclick="setPaintColor('#0ea5e9')"></div>
+            <div class="color-preset" style="background:#a855f7" onclick="setPaintColor('#a855f7')"></div>
+            <div class="color-preset" style="background:#ef4444" onclick="setPaintColor('#ef4444')"></div>
+          </div>
+        </div>
+        <div>
+          <label>Название местности / региона</label>
+          <input type="text" id="paint-name" placeholder="Напр.: Королевство Вестмарк" />
+        </div>
+        <div>
+          <label>Описание для карты и ИИ</label>
+          <textarea id="paint-desc" placeholder="Опиши эту территорию для ИИ..."></textarea>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <button class="primary" onclick="applyPaintLocally()">🖌️ Закрасить без ИИ</button>
+          <button class="ai-btn" id="btn-ai-fill" onclick="fillAreaWithAI()">✨ Заполнить местность через ИИ</button>
+          <button onclick="clearSelection()">Снять выделение</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>➕ Создать объект на клетке</h3>
+        <div class="small-hint">Активная клетка: <strong id="quick-obj-coords">не выбрана</strong></div>
+        <div style="display:flex; gap:6px;">
+          <div style="width:65px;">
+            <label>Эмодзи</label>
+            <input type="text" id="obj-emoji" value="🏰" />
+          </div>
+          <div style="flex:1;">
+            <label>Название / Имя</label>
+            <input type="text" id="obj-name" placeholder="Напр.: Замок «Север»" />
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+          <div>
+            <label>Категория</label>
+            <select id="obj-type">
+              <option value="settlement">Поселение</option>
+              <option value="building">Постройка</option>
+              <option value="character">Персонаж</option>
+              <option value="item">Предмет</option>
+              <option value="other">Другое</option>
+            </select>
+          </div>
+          <div>
+            <label>Фракция</label>
+            <select id="obj-faction-select">
+              <option value="">Нет</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label>Описание (статичное)</label>
+          <textarea id="obj-desc" placeholder="Описание объекта..."></textarea>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="primary" style="flex:1; justify-content:center;" onclick="addManualObject()">Добавить</button>
+          <button class="ai-btn" onclick="openCharacterModal(null)">👤 +Персонаж</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ЦЕНТР -->
+    <main class="center-area">
+      <div class="map-container" id="map-container">
+        <canvas id="map-canvas"></canvas>
+        <div class="map-hud">
+          <div>Клетка: <strong id="hud-coords">X: —, Y: —</strong> (<span id="hud-cell-scale-label">1 км</span>) | <span id="hud-time-of-day">☀️ День</span></div>
+          <div>Местность: <strong id="hud-terrain">Пустая земля</strong> <span id="hud-faction-tag" style="color:#c084fc;"></span></div>
+          <div>Живых NPC: <strong id="hud-char-count">0</strong> | Павших: <strong id="hud-dead-count">0</strong> | Всего объектов: <strong id="hud-total-obj-count">0</strong></div>
+        </div>
+        <div class="map-controls-overlay">
+          <button onclick="clearTurnVisuals()" title="Очистить стрелки перемещений на карте">🧹 Скрыть стрелки</button>
+          <button onclick="zoomMap(1.25)">➕</button>
+          <button onclick="zoomMap(0.8)">➖</button>
+          <button onclick="centerMap()">🎯 Центр</button>
+        </div>
+        <div class="ai-loading-banner" id="ai-loader">
+          <div class="spinner"></div>
+          <span id="ai-loader-text">ИИ просчитывает мир через OpenRouter...</span>
+        </div>
+      </div>
+
+      <!-- ПАНЕЛЬ АКТИВНОГО ВСЕЛЕНИЯ В ПЕРСОНАЖА -->
+      <div class="possession-bar" id="possession-bar">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="font-size:18px;" id="possess-bar-emoji">🧍</span>
+          <div>
+            <div>🕹️ <b>Режим воплощения:</b> вы в теле <strong id="possess-bar-name" style="color:#6ee7b7;">—</strong> на <strong id="possess-bar-coords">(0, 0)</strong></div>
+            <div class="small-hint" style="color:#cbd5e1;">Все команды ниже выполняются от вашего лица. Вы также можете лично говорить с персонажами!</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="possess-btn active" onclick="openLiveTalkModal()">💬 Поговорить с NPC</button>
+          <button onclick="focusPossessedChar()">🎯 К герою</button>
+          <button onclick="openCharacterModal(worldState.possessedCharId)">👤 Досье</button>
+          <button class="danger" onclick="unpossessCharacter()">👻 Выйти</button>
+        </div>
+      </div>
+
+      <div class="bottom-panel">
+        <div class="command-box">
+          <label id="command-box-label">⚡ Панель управления: Что произойдёт в следующем ходу? (Оставь пустым — и мир сам будет строить здания, рождать героев и двигать сюжет!)</label>
+          <textarea id="player-command" placeholder="Оставь пустым для автономной жизни мира или напиши любое событие/приказ..."></textarea>
+        </div>
+        <div class="sim-controls">
+          <div class="sim-settings-row">
+            <div>
+              <label>Ходов (1–5)</label>
+              <select id="sim-turns">
+                <option value="1">1 ход</option>
+                <option value="2">2 хода</option>
+                <option value="3">3 хода</option>
+                <option value="4">4 хода</option>
+                <option value="5">5 ходов</option>
+              </select>
+            </div>
+            <div>
+              <label>Шаг за ход</label>
+              <input type="number" id="sim-time-val" value="1" min="1" max="1000" />
+            </div>
+            <div>
+              <label>Ед. времени</label>
+              <select id="sim-time-unit">
+                <option value="ч." selected>Часов (ЧЧ)</option>
+                <option value="дн.">Дней (ДД)</option>
+                <option value="мес.">Месяцев (ММ)</option>
+                <option value="лет">Лет (ГГ)</option>
+              </select>
+            </div>
+            <div style="flex:1.3;">
+              <label>🌱 Авто-жизнь</label>
+              <select id="sim-autonomy-level" onchange="onAutonomyLevelChange()">
+                <option value="low">Спокойная</option>
+                <option value="medium" selected>Активная</option>
+                <option value="high">Бурная экспансия</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="ai-btn" id="btn-simulate" style="flex:1; padding:9px; justify-content:center; font-size:13px;" onclick="runSimulation()">
+              ▶️ Симулировать мир
+            </button>
+            <button id="btn-auto-sim" onclick="toggleAutoSimulation()" style="padding:9px 11px;">
+              🔄 Авто-ход
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ПРАВАЯ ПАНЕЛЬ (6 ВКЛАДОК) -->
+    <aside class="right-panel">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('cell')">📍 Клетка</button>
+        <button class="tab-btn" onclick="switchTab('chars')">👥 Герои</button>
+        <button class="tab-btn" onclick="switchTab('factions')">🏰 Фракции</button>
+        <button class="tab-btn" onclick="switchTab('chronicle')">📜 Летопись</button>
+        <button class="tab-btn" onclick="switchTab('dialogs')">💬 Диалоги</button>
+        <button class="tab-btn" onclick="switchTab('items')">🎒 Предметы</button>
+      </div>
+
+      <!-- 1. Клетка -->
+      <div id="tab-cell" class="tab-content active">
+        <div id="cell-inspector-content"></div>
+      </div>
+
+      <!-- 2. Персонажи (Живые + Архив Павших) -->
+      <div id="tab-chars" class="tab-content">
+        <div class="panel-section" style="background:rgba(15,23,42,0.65);">
+          <h3><span>⚙️ Общие статусы для всех персонажей</span></h3>
+          <div style="display:flex; gap:5px;">
+            <input type="text" id="new-global-stat-input" placeholder="Напр.: Уровень (растёт за опыт)" />
+            <button class="primary" onclick="addGlobalCharStat()" style="white-space:nowrap;">➕</button>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; justify-content:space-between;">
+            <div style="display:flex; gap:5px; align-items:center;">
+              <label style="margin:0; font-size:11px;">По умолч.:</label>
+              <input type="text" id="new-global-stat-default" value="Не указано" style="width:100px; padding:3px 7px;" />
+            </div>
+            <label style="margin:0; display:flex; align-items:center; gap:4px; cursor:pointer; color:#fde68a; font-size:11px;">
+              <input type="checkbox" id="new-global-stat-static" /> 🔒 Статичный
+            </label>
+          </div>
+          <div id="global-stats-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+        </div>
+
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="char-search-input" placeholder="🔎 Поиск персонажа..." oninput="renderCharactersTab()" />
+          <select id="char-filter-mode" style="width:130px;" onchange="renderCharactersTab()">
+            <option value="alive">❤️ Живые</option>
+            <option value="dead">💀 Павшие</option>
+            <option value="all">Все</option>
+          </select>
+          <button class="ai-btn" style="white-space:nowrap;" onclick="openCharacterModal(null)">➕</button>
+        </div>
+
+        <div id="characters-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- 3. Фракции и Государства -->
+      <div id="tab-factions" class="tab-content">
+        <div class="panel-section">
+          <h3>👑 Создать фракцию / королевство</h3>
+          <div style="display:flex; gap:6px;">
+            <input type="color" id="faction-color-input" value="#ef4444" style="width:38px; height:32px; padding:0; border:none; background:none; cursor:pointer;" />
+            <input type="text" id="faction-name-input" placeholder="Название (напр. Орден Света / Корпорация Арасака)" style="flex:1;" />
+          </div>
+          <div>
+            <label>Дипломатия и отношения с другими фракциями</label>
+            <input type="text" id="faction-diplomacy-input" placeholder="Напр.: Война с Северным Кланом, Торговый союз с Вольным Городом" />
+          </div>
+          <div>
+            <label>Описание идеологии, целей и сил</label>
+            <textarea id="faction-desc-input" style="min-height:48px;" placeholder="Описание фракции..."></textarea>
+          </div>
+          <button class="primary" onclick="addOrUpdateFaction()">➕ Добавить / Обновить фракцию</button>
+        </div>
+        <div id="factions-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- 4. Летопись -->
+      <div id="tab-chronicle" class="tab-content">
+        <div id="chronicle-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- 5. Диалоги -->
+      <div id="tab-dialogs" class="tab-content">
+        <div id="dialogs-top-actions"></div>
+        <div id="dialogs-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <!-- 6. Предметы -->
+      <div id="tab-items" class="tab-content">
+        <div id="items-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: 5 ГОТОВЫХ ПРЕСЕТОВ МИРОВ -->
+  <div class="modal-backdrop" id="presets-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📦 Готовые пресеты миров (Быстрый старт)</h2>
+        <button onclick="closeModal('presets-modal')">✖</button>
+      </div>
+      <div class="small-hint">
+        Выбери любой шаблон — он сразу настроит масштаб карты, эпоху, часы, фракции, стартовые локации, персонажей (с отношениями и статусами) и предметы!
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div class="preset-card" onclick="loadWorldPreset('medieval')">
+          <div style="font-weight:700; color:#facc15;">🏰 1. Средневековье: Война двух королевств (1250 г., 60×60 км)</div>
+          <div class="small-hint">Королевство Вестмарк и Железное Герцогство Вольгард на грани большой войны. Замки, рыцари, лучники, кузницы и придворные интриги.</div>
+        </div>
+        <div class="preset-card" onclick="loadWorldPreset('modern')">
+          <div style="font-weight:700; color:#38bdf8;">🌆 2. Современный мир: Жизнь мегаполиса (2026 г., 40×40, 1 кл. = 200 м)</div>
+          <div class="small-hint">Современный прибрежный город Сан-Вегас. Деловой центр, университет, полиция, криминальный синдикат, смартфоны, бизнес и городская жизнь.</div>
+        </div>
+        <div class="preset-card" onclick="loadWorldPreset('cyberpunk')">
+          <div style="font-weight:700; color:#c084fc;">🦾 3. Киберпанк 2099: Неон-Сити (2099 г., 35×35, 1 кл. = 100 м)</div>
+          <div class="small-hint">Дождливый мегаполис будущего. Мегакорпорация «НейроТек» против уличной банды «Хромовые Псы». Киберимпланты, нетраннеры и подпольные клиники.</div>
+        </div>
+        <div class="preset-card" onclick="loadWorldPreset('zombie')">
+          <div style="font-weight:700; color:#ef4444;">🧟 4. Зомби-апокалипсис: Последний рубеж (2028 г., 30×30, 1 кл. = 50 м)</div>
+          <div class="small-hint">Заражённый город после эпидемии. Укреплённая база выживших, мародёры и орды инфицированных. Поиск медикаментов, патронов и борьба за жизнь.</div>
+        </div>
+        <div class="preset-card" onclick="loadWorldPreset('planet')">
+          <div style="font-weight:700; color:#10b981;">🪐 5. Другая планета: Экзопланета «Кеплер-Прайм» (2340 г., 80×80 км)</div>
+          <div class="small-hint">Купольная база земных колонистов «Аванпост-7» и загадочные биолюминесцентные руины древней расы Эфириалов. Научные экспедиции и инопланетная фауна.</div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button onclick="closeModal('presets-modal')">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: РАЗМЕР КАРТЫ И МАСШТАБ КЛЕТКИ -->
+  <div class="modal-backdrop" id="scale-modal">
+    <div class="modal" style="width:540px;">
+      <div class="modal-header">
+        <h2>📐 Размер мира и Масштаб клетки</h2>
+        <button onclick="closeModal('scale-modal')">✖</button>
+      </div>
+      <div>
+        <label>Быстрые шаблоны</label>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button type="button" onclick="setScalePreset(5, 5, 10, 'м')">🏠 5×5 (10 м)</button>
+          <button type="button" onclick="setScalePreset(15, 15, 50, 'м')">🏝️ 15×15 (50 м)</button>
+          <button type="button" onclick="setScalePreset(35, 35, 100, 'м')">🏙️ 35×35 (100 м)</button>
+          <button type="button" onclick="setScalePreset(50, 50, 1, 'км')">🗺️ 50×50 (1 км)</button>
+          <button type="button" onclick="setScalePreset(150, 150, 1, 'км')">🌍 150×150 (1 км)</button>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div>
+          <label>Ширина карты (X, 2–300)</label>
+          <input type="number" id="scale-grid-w" min="2" max="300" value="150" />
+        </div>
+        <div>
+          <label>Высота карты (Y, 2–300)</label>
+          <input type="number" id="scale-grid-h" min="2" max="300" value="150" />
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div>
+          <label>Размер 1 клетки (число)</label>
+          <input type="number" id="scale-cell-val" min="1" max="100000" value="1" />
+        </div>
+        <div>
+          <label>Единица измерения</label>
+          <select id="scale-cell-unit">
+            <option value="м">Метров (м)</option>
+            <option value="км" selected>Километров (км)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button onclick="closeModal('scale-modal')">Отмена</button>
+        <button class="primary" onclick="saveScaleModal()">💾 Применить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: НАСТРОЙКА ВРЕМЕНИ И ПОГОДЫ -->
+  <div class="modal-backdrop" id="time-modal">
+    <div class="modal" style="width:520px;">
+      <div class="modal-header">
+        <h2>🕒 Время (ГГ:ММ:ДД:ЧЧ) и Погода</h2>
+        <button onclick="closeModal('time-modal')">✖</button>
+      </div>
+      <div class="clock-grid">
+        <div>
+          <label>ГГ (Год)</label>
+          <input type="number" id="clock-year-input" value="1200" />
+        </div>
+        <div>
+          <label>ММ (Месяц 1–12)</label>
+          <input type="number" id="clock-month-input" min="1" max="12" value="5" />
+        </div>
+        <div>
+          <label>ДД (День 1–30)</label>
+          <input type="number" id="clock-day-input" min="1" max="30" value="1" />
+        </div>
+        <div>
+          <label>ЧЧ (Час 0–23)</label>
+          <input type="number" id="clock-hour-input" min="0" max="23" value="8" />
+        </div>
+      </div>
+      <div>
+        <label>Быстрый ввод (ГГ:ММ:ДД:ЧЧ)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="clock-raw-string" placeholder="1250:05:14:08" />
+          <button onclick="applyRawStringClock()">Подставить</button>
+        </div>
+      </div>
+      <div>
+        <label>Текущая погода в мире (влияет на атмосферу и карту)</label>
+        <select id="clock-weather-select">
+          <option value="☀️ Ясно">☀️ Ясно</option>
+          <option value="⛅ Облачно">⛅ Облачно</option>
+          <option value="🌧️ Дождь">🌧️ Дождь</option>
+          <option value="⛈️ Гроза и шторм">⛈️ Гроза и шторм</option>
+          <option value="🌫️ Густой туман">🌫️ Густой туман</option>
+          <option value="❄️ Снегопад / Метель">❄️ Снегопад / Метель</option>
+          <option value="🔥 Аномальная жара">🔥 Аномальная жара</option>
+        </select>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button onclick="closeModal('time-modal')">Отмена</button>
+        <button class="primary" onclick="saveWorldClockModal()">💾 Сохранить время и погоду</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ЖИВОЙ РАЗГОВОР ОТ ЛИЦА ПЕРСОНАЖА -->
+  <div class="modal-backdrop" id="talk-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>💬 Разговор от лица персонажа</h2>
+        <button onclick="closeModal('talk-modal')">✖</button>
+      </div>
+      <div class="small-hint">
+        Вы говорите от лица <strong id="talk-my-char-name" style="color:#6ee7b7;">—</strong>. После беседы ИИ также обновит личные отношения между вами!
+      </div>
+      <div>
+        <label>Собеседник</label>
+        <select id="talk-target-select" onchange="onTalkTargetChange()"></select>
+      </div>
+      <div>
+        <label>Способ / Статус связи</label>
+        <input type="text" id="talk-method-input" />
+      </div>
+      <div>
+        <label>Причина / Контекст диалога</label>
+        <input type="text" id="talk-reason-input" />
+      </div>
+      <div>
+        <label>Ваша реплика или действие</label>
+        <textarea id="talk-message-input" placeholder="Напиши прямую речь своего персонажа..."></textarea>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button onclick="closeModal('talk-modal')">Отмена</button>
+        <button class="possess-btn active" id="btn-send-talk" onclick="sendLiveTalkToAI()">📨 Сказать и получить ответ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: ДОСЬЕ И РЕДАКТОР ПЕРСОНАЖА -->
+  <div class="modal-backdrop" id="char-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="char-modal-title">👤 Досье персонажа</h2>
+        <button onclick="closeModal('char-modal')">✖</button>
+      </div>
+      <input type="hidden" id="char-edit-id" />
+
+      <div style="display:flex; gap:8px;">
+        <div style="width:65px;">
+          <label>Эмодзи</label>
+          <input type="text" id="char-edit-emoji" value="🧍" />
+        </div>
+        <div style="flex:1;">
+          <label>Имя персонажа (Статично)</label>
+          <input type="text" id="char-edit-name" placeholder="Имя..." />
+        </div>
+        <div style="width:150px;">
+          <label>Фракция</label>
+          <select id="char-edit-faction"></select>
+        </div>
+        <div style="width:70px;">
+          <label>X</label>
+          <input type="number" id="char-edit-x" min="0" max="299" value="0" />
+        </div>
+        <div style="width:70px;">
+          <label>Y</label>
+          <input type="number" id="char-edit-y" min="0" max="299" value="0" />
+        </div>
+      </div>
+
+      <div>
+        <label>📝 Неизменное описание / Биография персонажа (🔒 Статично)</label>
+        <textarea id="char-edit-desc" style="min-height:56px;" placeholder="Кто этот персонаж, его предыстория и суть..."></textarea>
+      </div>
+
+      <div>
+        <label>⚡ Текущее действие в этом ходу (обновляется ИИ)</label>
+        <input type="text" id="char-edit-status" placeholder="Чем занят сейчас..." />
+      </div>
+
+      <!-- Блок статусов -->
+      <div class="panel-section">
+        <h3>
+          <span>📊 Статусы (Внешность, Одежда, Характер, Инвентарь и др.)</span>
+          <button type="button" onclick="addPersonalStatRow('', '', false, true)" style="padding:2px 7px; font-size:11px;">➕ Статус</button>
+        </h3>
+        <div id="char-modal-stats-container" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <!-- Блок отношений и личной памяти -->
+      <div class="panel-section">
+        <h3>
+          <span>❤️ Отношения и память о других персонажах</span>
+          <button type="button" onclick="addRelationshipRow('', '')" style="padding:2px 7px; font-size:11px;">➕ Отношение</button>
+        </h3>
+        <div class="small-hint">Автоматически пополняется ИИ после диалогов, боёв и событий.</div>
+        <div id="char-modal-rels-container" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+          <button class="danger" id="btn-delete-char-modal" onclick="deleteCharacterFromModal()">🗑️ Удалить</button>
+          <button class="danger" id="btn-kill-char-modal" onclick="killOrResurrectFromModal()">💀 Убить (В павшие)</button>
+          <button class="ai-btn" id="btn-ai-gen-char" onclick="generateCharDetailsWithAI()">✨ Заполнить ИИ</button>
+          <button class="possess-btn" id="btn-possess-char-modal" onclick="togglePossessFromModal()">🕹️ Вселиться</button>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button onclick="jumpToCharFromModal()">🎯 На карту</button>
+          <button class="primary" onclick="saveCharacterFromModal()">💾 Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: Сеттинг мира и Правила ИИ -->
+  <div class="modal-backdrop" id="setting-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🌍 Сеттинг мира и Инструкции для ИИ</h2>
+        <button onclick="closeModal('setting-modal')">✖</button>
+      </div>
+      <div>
+        <label>Название мира</label>
+        <input type="text" id="setting-world-name" />
+      </div>
+      <div>
+        <label>Описание мира, законов, технологического уровня и атмосферы</label>
+        <textarea id="setting-world-desc" style="min-height:90px;"></textarea>
+      </div>
+      <div>
+        <label style="color:#c084fc; font-weight:600;">📜 Правила, тон повествования и инструкции для ИИ (Директивы Мастера)</label>
+        <textarea id="setting-ai-rules" style="min-height:95px; border-color:#8b5cf6;"></textarea>
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button class="primary" onclick="saveWorldSetting()">💾 Сохранить сеттинг и правила</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО: Настройки OpenRouter API -->
+  <div class="modal-backdrop" id="api-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ Настройки подключения к OpenRouter</h2>
+        <button onclick="closeModal('api-modal')">✖</button>
+      </div>
+      <div>
+        <label>Режим подключения (обход блокировок для РФ без VPN)</label>
+        <select id="api-mode-select" onchange="onApiModeChange()">
+          <option value="gas">🚀 Через Google Скрипт (OpenRouter БЕЗ VPN в РФ)</option>
+          <option value="direct">🌐 Напрямую к OpenRouter (нужен VPN в РФ)</option>
+          <option value="custom">🇷🇺 Свой Base URL / Зеркало</option>
+        </select>
+      </div>
+      <div id="api-endpoint-box">
+        <label id="api-endpoint-label">URL Google Скрипта</label>
+        <input type="text" id="api-endpoint-input" />
+      </div>
+      <div>
+        <label>API Ключ OpenRouter</label>
+        <input type="password" id="api-key-input" placeholder="sk-or-v1-..." />
+      </div>
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <label style="margin:0;">Выбор модели с OpenRouter</label>
+          <button onclick="fetchOpenRouterModels()" id="btn-fetch-models" style="padding:3px 8px; font-size:11px;">🔄 Загрузить все модели с сайта</button>
+        </div>
+        <input type="text" id="model-search" placeholder="🔎 Поиск модели (deepseek, gemini, lumimaid, hermes, claude)..." oninput="filterModelSelect()" style="margin-bottom:6px;" />
+        <select id="api-model-select" size="6" style="height:130px;" onchange="document.getElementById('api-model-custom').value = this.value">
+          <option value="deepseek/deepseek-chat">deepseek/deepseek-chat (DeepSeek V3 — отлично без цензуры)</option>
+          <option value="google/gemini-2.5-flash">google/gemini-2.5-flash (Быстрая и умная)</option>
+          <option value="google/gemini-2.5-pro">google/gemini-2.5-pro</option>
+          <option value="nousresearch/hermes-3-llama-3.1-70b">nousresearch/hermes-3-llama-3.1-70b (Без цензуры / RP)</option>
+          <option value="mistralai/mistral-large-2411">mistralai/mistral-large-2411</option>
+          <option value="meta-llama/llama-3.3-70b-instruct">meta-llama/llama-3.3-70b-instruct</option>
+        </select>
+      </div>
+      <div>
+        <label>Выбранная модель</label>
+        <input type="text" id="api-model-custom" value="google/gemini-2.5-flash" />
+      </div>
+      <div class="modal-footer" style="justify-content:flex-end;">
+        <button class="primary" onclick="saveApiSettings()">Сохранить настройки API</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbyz6zQlxKEKB5k8zWsVznUdtAX_stsauUxJW7tCNDxzvIZZv_evibm7tuDeoFu3KRfP/exec";
+    const WEATHER_LIST = ["☀️ Ясно", "⛅ Облачно", "🌧️ Дождь", "⛈️ Гроза и шторм", "🌫️ Густой туман", "❄️ Снегопад / Метель", "🔥 Аномальная жара"];
+
+    function getDefaultGlobalStats() {
+      return [
+        { name: "Внешность", hint: "физический облик, постоянный параметр", rawLabel: "Внешность", defaultValue: "Не описана", isStatic: true },
+        { name: "Характер", hint: "личность и темперамент, постоянный параметр", rawLabel: "Характер", defaultValue: "Не описан", isStatic: true },
+        { name: "Одежда", hint: "одежда и броня строго по эпохе мира", rawLabel: "Одежда", defaultValue: "Обычная по эпохе", isStatic: false },
+        { name: "Инвентарь", hint: "список предметов при себе строго из текущей эпохи", rawLabel: "Инвентарь", defaultValue: "Пусто", isStatic: false }
+      ];
+    }
+
+    let worldState = {
+      worldName: "Неизведанный Мир",
+      worldDescription: "Свободная песочница. Персонажи исследуют мир, строят поселения, объединяются во фракции и общаются друг с другом.",
+      aiRules: "Строго соблюдай технологическую эпоху, масштаб карты и год мира (ГГ:ММ:ДД:ЧЧ)! Описывай события живо, детально и прямо, без самоцензуры.",
+      turn: 0,
+      gridWidth: 60,
+      gridHeight: 60,
+      cellScaleValue: 1,
+      cellScaleUnit: "км",
+      autonomyLevel: "medium",
+      weather: "☀️ Ясно",
+      worldClock: { year: 1250, month: 5, day: 1, hour: 10 },
+      possessedCharId: null,
+      factions: [],
+      cells: {},
+      objects: [],
+      globalCharStats: getDefaultGlobalStats(),
+      chronicle: [],
+      dialogs: [],
+      items: [],
+      lastTurnMoves: [],
+      lastTurnMarkers: []
+    };
+
+    // Стек для отката ходов (до 8 последних состояний)
+    let undoStack = [];
+
+    let apiConfig = {
+      apiKey: localStorage.getItem("sandbox_or_key") || "",
+      model: localStorage.getItem("sandbox_or_model") || "google/gemini-2.5-flash",
+      mode: localStorage.getItem("sandbox_or_mode") || "gas",
+      endpoint: localStorage.getItem("sandbox_or_endpoint") || DEFAULT_GAS_URL
+    };
+
+    let allFetchedModels = [
+      { id: "deepseek/deepseek-chat", name: "DeepSeek: DeepSeek Chat V3 (Отлично без цензуры)" },
+      { id: "google/gemini-2.5-flash", name: "Google: Gemini 2.5 Flash (Быстрая и умная)" },
+      { id: "google/gemini-2.5-pro", name: "Google: Gemini 2.5 Pro" },
+      { id: "nousresearch/hermes-3-llama-3.1-70b", name: "Nous: Hermes 3 70B (Uncensored RP)" },
+      { id: "mistralai/mistral-large-2411", name: "Mistral: Mistral Large 2411" },
+      { id: "meta-llama/llama-3.3-70b-instruct", name: "Meta: Llama 3.3 70B Instruct" }
+    ];
+
+    let autoSimRunning = false;
+
+    /********************************************************************
+     * 1. МАШИНА ВРЕМЕНИ (ОТКАТ ХОДА НАЗАД) И ПРЕСЕТЫ МИРОВ
+     ********************************************************************/
+    function pushUndoSnapshot() {
+      try {
+        undoStack.push(JSON.stringify(worldState));
+        if (undoStack.length > 8) undoStack.shift();
+        updateUndoButtonUI();
+      } catch (e) {}
+    }
+
+    function updateUndoButtonUI() {
+      const btn = document.getElementById("btn-undo");
+      if (!btn) return;
+      btn.disabled = undoStack.length === 0;
+      btn.textContent = `⏪ Откат (${undoStack.length})`;
+    }
+
+    function undoLastTurn() {
+      if (undoStack.length === 0) return;
+      const prevJson = undoStack.pop();
+      worldState = JSON.parse(prevJson);
+      ensureGridAndScale();
+      ensureWorldClock();
+      syncAllCharactersWithGlobalStats();
+      saveToLocalStorage();
+      updateUndoButtonUI();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function clearTurnVisuals() {
+      worldState.lastTurnMoves = [];
+      worldState.lastTurnMarkers = [];
+      drawMap();
+    }
+
+    // 5 проработанных стартовых пресетов
+    function loadWorldPreset(presetKey) {
+      if (Object.keys(worldState.cells).length > 0 || worldState.objects.length > 0) {
+        if (!confirm("Загрузка пресета заменит текущий мир (вы сможете вернуть его кнопкой «⏪ Откат»). Продолжить?")) return;
+      }
+      pushUndoSnapshot();
+
+      const baseStats = getDefaultGlobalStats();
+
+      if (presetKey === "medieval") {
+        worldState = {
+          worldName: "Хроники Вестмарка и Вольгарда",
+          worldDescription: "Суровое Средневековье. Два королевства — цветущий Вестмарк и милитаристское Железное Герцогство Вольгард — соперничают за пограничные земли. Только мечи, копья, луки, конница и осадные орудия.",
+          aiRules: "Строго соблюдай средневековую эпоху (1250 год)! Никакого огнестрела и электроники. Описывай бои, интриги и жизнь живо, детально и без цензуры.",
+          turn: 1, gridWidth: 50, gridHeight: 50, cellScaleValue: 1, cellScaleUnit: "км", autonomyLevel: "medium", weather: "☀️ Ясно",
+          worldClock: { year: 1250, month: 5, day: 12, hour: 9 }, possessedCharId: null,
+          globalCharStats: [...baseStats, { name: "Титул / Ранг", hint: "положение в обществе", rawLabel: "Титул / Ранг", defaultValue: "Простой житель", isStatic: false }],
+          factions: [
+            { id: "f1", name: "Королевство Вестмарк", color: "#3b82f6", diplomacy: "Напряжённое перемирие с Вольгардом", description: "Богатое торговое и рыцарское королевство на западе." },
+            { id: "f2", name: "Герцогство Вольгард", color: "#ef4444", diplomacy: "Готовит вторжение в Вестмарк", description: "Суровое военизированное государство севера." }
+          ],
+          cells: {
+            "20,25": { x: 20, y: 25, name: "Столица Вестмарк", color: "#2563eb", faction: "Королевство Вестмарк", description: "Белокаменная столица с высоким замком и шумной ярмаркой." },
+            "21,25": { x: 21, y: 25, name: "Королевские пашни", color: "#22c55e", faction: "Королевство Вестмарк", description: "Плодородные поля и мельницы вокруг столицы." },
+            "30,25": { x: 30, y: 25, name: "Цитадель Вольгард", color: "#dc2626", faction: "Герцогство Вольгард", description: "Мрачная неприступная крепость с дымящими кузницами." },
+            "25,25": { x: 25, y: 25, name: "Пограничный мост", color: "#64748b", faction: "", description: "Каменный мост через реку между двумя державами." }
+          },
+          objects: [
+            { id: "s1", name: "Замок Вестмарк", type: "settlement", emoji: "🏰", x: 20, y: 25, faction: "Королевство Вестмарк", status: "Процветает", description: "Главный оплот короля Аларика." },
+            { id: "s2", name: "Чёрная Цитадель", type: "settlement", emoji: "🏯", x: 30, y: 25, faction: "Герцогство Вольгард", status: "Собирает рать", description: "Твердыня герцога Моргана." },
+            {
+              id: "c1", name: "Сир Роланд", type: "character", emoji: "🛡️", x: 20, y: 25, faction: "Королевство Вестмарк", status: "Проверяет гарнизон столицы",
+              description: "Благородный капитан королевской гвардии Вестмарка.",
+              customStats: { "Внешность": "Высокий широкоплечий рыцарь со шрамом на щеке", "Характер": "Честный, решительный, преданный короне", "Одежда": "Стальные латы с синим плащом", "Инвентарь": "Двуручный меч, фамильный перстень, кошель серебра", "Титул / Ранг": "Капитан гвардии" },
+              relationships: { "Барон Морган": "Заклятый соперник по старым турнирам", "Леди Эвелина": "Тайная симпатия и уважение" }
+            },
+            {
+              id: "c2", name: "Леди Эвелина", type: "character", emoji: "👑", x: 20, y: 25, faction: "Королевство Вестмарк", status: "Ведёт переговоры с купцами",
+              description: "Молодая советница и племянница короля Вестмарка, мастер дипломатии.",
+              customStats: { "Внешность": "Изящная девушка с рыжими локонами и изумрудными глазами", "Характер": "Холодный ум, обаятельная, хитрая", "Одежда": "Бархатное платье с золотым шитьём", "Инвентарь": "Печать короля, кинжал в ножнах, письма шпионов", "Титул / Ранг": "Королевский канцлер" },
+              relationships: { "Сир Роланд": "Доверяет ему свою жизнь" }
+            },
+            {
+              id: "c3", name: "Барон Морган", type: "character", emoji: "⚔️", x: 30, y: 25, faction: "Герцогство Вольгард", status: "Готовит конницу к походу на мост",
+              description: "Жестокий полководец Вольгарда, жаждущий завоевать западные земли.",
+              customStats: { "Внешность": "Суровый воин с чёрной бородой и тяжёлым взглядом", "Характер": "Амбициозный, беспощадный, расчётливый", "Одежда": "Воронёный пластинчатый доспех с волчьей шкурой", "Инвентарь": "Тяжёлый боевой молот, карта укреплений Вестмарка", "Титул / Ранг": "Верховный маршал" },
+              relationships: { "Сир Роланд": "Жаждет сойтись с ним в поединке" }
+            }
+          ],
+          chronicle: [{ id: "chr0", turnInfo: "Начало", timeInfo: "🕒 1250:05:12:09", playerPrompt: "Пресет: Средневековье", text: "Весна 1250 года. На границе между Королевством Вестмарк и Герцогством Вольгард сгущаются тучи." }],
+          dialogs: [],
+          items: [{ id: "i1", name: "Королевская печать Вестмарка", emoji: "📜", category: "Реликвия", description: "Даёт право отдавать приказы от имени короны." }],
+          lastTurnMoves: [], lastTurnMarkers: []
+        };
+      } else if (presetKey === "modern") {
+        worldState = {
+          worldName: "Мегаполис Сан-Вегас",
+          worldDescription: "Современный мир (2026 год). Солнечный прибрежный мегаполис с небоскрёбами, пляжами, полицией, корпорациями и ночными клубами. У всех есть смартфоны, интернет и автомобили.",
+          aiRules: "Сеттинг: наши дни (2026 год). Описывай современную жизнь, бизнес, криминал, тусовки и отношения прямо, живо и без цензуры.",
+          turn: 1, gridWidth: 40, gridHeight: 40, cellScaleValue: 200, cellScaleUnit: "м", autonomyLevel: "medium", weather: "☀️ Ясно",
+          worldClock: { year: 2026, month: 7, day: 15, hour: 18 }, possessedCharId: null,
+          globalCharStats: [...baseStats, { name: "Деньги ($)", hint: "личный баланс в долларах", rawLabel: "Деньги ($)", defaultValue: "1000$", isStatic: false }],
+          factions: [
+            { id: "f1", name: "Мэрия и Полиция (SVPD)", color: "#3b82f6", diplomacy: "Следит за порядком в городе", description: "Городские власти и департамент полиции." },
+            { id: "f2", name: "Клубная Империя «Мираж»", color: "#ec4899", diplomacy: "Влиятельный бизнес и теневые связи", description: "Сеть элитных отелей, казино и пляжных клубов." }
+          ],
+          cells: {
+            "20,20": { x: 20, y: 20, name: "Даунтаун Плаза", color: "#475569", faction: "Мэрия и Полиция (SVPD)", description: "Деловой центр города со стеклянными небоскрёбами." },
+            "20,22": { x: 20, y: 22, name: "Золотой Пляж и Отель «Мираж»", color: "#eab308", faction: "Клубная Империя «Мираж»", description: "Курортная набережная с пальмами, яхтами и клубами." }
+          },
+          objects: [
+            { id: "s1", name: "Развлекательный комплекс «Мираж»", type: "building", emoji: "🏨", x: 20, y: 22, faction: "Клубная Империя «Мираж", status: "Вечерняя вечеринка", description: "Роскошный отель и клуб на берегу океана." },
+            { id: "c1", name: "Макс Кортес", type: "character", emoji: "🕶️", x: 20, y: 22, faction: "Клубная Империя «Мираж»", status: "Принимает VIP-гостей в пентхаусе", description: "Харизматичный владелец клуба «Мираж».", customStats: { "Внешность": "Спортивный брюнет 30 лет с лёгкой щетиной", "Характер": "Уверенный, обаятельный, любит риск и роскошь", "Одежда": "Белая расстёгнутая рубашка и дизайнерский костюм", "Инвентарь": "Смартфон iPhone, ключи от спорткара, золотая карта", "Деньги ($)": "250 000$" }, relationships: { "Хлоя Вэнс": "Флирт и деловой интерес" } },
+            { id: "c2", name: "Хлоя Вэнс", type: "character", emoji: "💃", x: 20, y: 22, faction: "", status: "Отдыхает у бассейна на крыше", description: "Популярная модель и блогерша, приехавшая в Сан-Вегас.", customStats: { "Внешность": "Стройная блондинка с яркой улыбкой", "Характер": "Дерзкая, раскрепощённая, обожает внимание", "Одежда": "Вечернее коктейльное платье", "Инвентарь": "Смартфон, сумочка, VIP-пропуск", "Деньги ($)": "15 000$" }, relationships: { "Макс Кортес": "Симпатия и интрига" } }
+          ],
+          chronicle: [{ id: "chr0", turnInfo: "Начало", timeInfo: "🕒 2026:07:15:18", playerPrompt: "Пресет: Современный мир", text: "Тёплый летний вечер в Сан-Вегасе. На набережной зажигаются огни ночных клубов." }],
+          dialogs: [], items: [], lastTurnMoves: [], lastTurnMarkers: []
+        };
+      } else if (presetKey === "cyberpunk") {
+        worldState = {
+          worldName: "Неон-Сити 2099",
+          worldDescription: "Высокотехнологичный киберпанк-мегаполис (2099 год). Нейроимпланты, летающие спиннеры, киберпространство, власть мегакорпораций и неоновые трущобы.",
+          aiRules: "Сеттинг: мрачный и яркий киберпанк 2099 года. Описывай высокие технологии, импланты, уличные разборки и ночную жизнь мегаполиса без цензуры.",
+          turn: 1, gridWidth: 35, gridHeight: 35, cellScaleValue: 100, cellScaleUnit: "м", autonomyLevel: "medium", weather: "🌧️ Дождь",
+          worldClock: { year: 2099, month: 11, day: 4, hour: 22 }, possessedCharId: null,
+          globalCharStats: [...baseStats, { name: "Импланты", hint: "установленные кибермодули", rawLabel: "Импланты", defaultValue: "Нейролинк v1", isStatic: false }, { name: "Кредиты (₡)", hint: "валюта", rawLabel: "Кредиты (₡)", defaultValue: "500₡", isStatic: false }],
+          factions: [
+            { id: "f1", name: "Корпорация «НейроТек»", color: "#0ea5e9", diplomacy: "Зачищает нижние сектора", description: "Могущественная ТНК, контролирующая производство киберимплантов." },
+            { id: "f2", name: "Синдикат «Хромовые Псы»", color: "#a855f7", diplomacy: "Ведёт кибервойну с НейроТек", description: "Группировка наёмников, нетраннеров и контрабандистов." }
+          ],
+          cells: {
+            "17,15": { x: 17, y: 15, name: "Шпиль «НейроТек»", color: "#0284c7", faction: "Корпорация «НейроТек»", description: "Сияющий корпоративный небоскрёб высотой в километр." },
+            "17,19": { x: 17, y: 19, name: "Неоновый рынок Сектора-9", color: "#7e22ce", faction: "Синдикат «Хромовые Псы»", description: "Подземные улочки с клиниками риппердоков и барами." }
+          },
+          objects: [
+            { id: "s1", name: "Бар «Посмертие-9»", type: "building", emoji: "🍸", x: 17, y: 19, faction: "Синдикат «Хромовые Псы»", status: "Полон наёмников", description: "Легендарный клуб нетраннеров и соло-наёмников." },
+            { id: "c1", name: "Рэйвен (Ворон)", type: "character", emoji: "🥷", x: 17, y: 19, faction: "Синдикат «Хромовые Псы»", status: "Ищет заказ в баре", description: "Элитный уличный наёмник и нетраннер.", customStats: { "Внешность": "Худощавый парень со светящейся оптикой и хромированной рукой", "Характер": "Циничный, хладнокровный профессионал", "Одежда": "Бронированная куртка с высоким воротником", "Инвентарь": "Умный пистолет «Катана-X», кибердека", "Импланты": "Кибероптика «Кироши», рефлекс-бустер", "Кредиты (₡)": "12 000₡" }, relationships: { "Агент Нова": "Опасная цель и бывшая напарница" } },
+            { id: "c2", name: "Агент Нова", type: "character", emoji: "👩‍🎤", x: 17, y: 15, faction: "Корпорация «НейроТек»", status: "Отслеживает взлом сети", description: "Оперативница контрразведки корпорации «НейроТек».", customStats: { "Внешность": "Девушка с пепельным каре и золотистыми линиями имплантов на лице", "Характер": "Холодная, амбициозная, но сомневается в корпорации", "Одежда": "Тактический корпо-костюм", "Инвентарь": "Стелс-модуль, электромагнитный клинок, чип доступа", "Импланты": "Боевой нейропроцессор, оптический камуфляж", "Кредиты (₡)": "85 000₡" }, relationships: { "Рэйвен (Ворон)": "Сложное прошлое" } }
+          ],
+          chronicle: [{ id: "chr0", turnInfo: "Начало", timeInfo: "🕒 2099:11:04:22", playerPrompt: "Пресет: Киберпанк", text: "Кислотный дождь заливает неоновые вывески Сектора-9. В сети «НейроТек» зафиксирована утечка секретного прототипа." }],
+          dialogs: [], items: [], lastTurnMoves: [], lastTurnMarkers: []
+        };
+      } else if (presetKey === "zombie") {
+        worldState = {
+          worldName: "Карантинная Зона «Омега»",
+          worldDescription: "Зомби-апокалипсис (2028 год). Город рухнул под натиском вируса. Выжившие строят баррикады, ищут консервы, патроны и топливо, отбиваясь от заражённых и мародёров.",
+          aiRules: "Сеттинг: суровый постапокалипсис и выживание среди зомби. Ресурсы ограничены, опасность на каждом шагу. Описывай всё реалистично и без цензуры.",
+          turn: 1, gridWidth: 30, gridHeight: 30, cellScaleValue: 50, cellScaleUnit: "м", autonomyLevel: "medium", weather: "🌫️ Густой туман",
+          worldClock: { year: 2028, month: 10, day: 3, hour: 16 }, possessedCharId: null,
+          globalCharStats: [...baseStats, { name: "Здоровье / Заражение", hint: "состояние организма", rawLabel: "Здоровье / Заражение", defaultValue: "100% (Чист)", isStatic: false }],
+          factions: [
+            { id: "f1", name: "Община «Ковчег»", color: "#22c55e", diplomacy: "Защищает выживших, враждует с Рейдерами", description: "Лагерь выживших в здании бывшей пожарной части." },
+            { id: "f2", name: "Банда Мародёров", color: "#f97316", diplomacy: "Грабит всех вокруг", description: "Вооружённая банда, захватившая склад." }
+          ],
+          cells: {
+            "15,15": { x: 15, y: 15, name: "База «Ковчег» (Пожарная часть)", color: "#16a34a", faction: "Община «Ковчег»", description: "Укреплённое здание с колючей проволокой и генератором." },
+            "16,15": { x: 16, y: 15, name: "Заброшенный супермаркет", color: "#475569", faction: "", description: "Разграбленный магазин, где ещё можно найти припасы, но бродят заражённые." },
+            "19,15": { x: 19, y: 15, name: "Красная зона (Улей заражённых)", color: "#dc2626", faction: "", description: "Разрушенный госпиталь, кишащий мутантами." }
+          },
+          objects: [
+            { id: "s1", name: "Форпост «Ковчег»", type: "settlement", emoji: "🚧", x: 15, y: 15, faction: "Община «Ковчег»", status: "Держит оборону", description: "Главное убежище выживших." },
+            { id: "c1", name: "Виктор Громов", type: "character", emoji: "🧔", x: 15, y: 15, faction: "Община «Ковчег»", status: "Собирает вылазку в супермаркет", description: "Бывший спасатель МЧС, лидер общины «Ковчег».", customStats: { "Внешность": "Крепкий мужчина 40 лет со шрамом на предплечье", "Характер": "Суровый, надёжный, прагматичный", "Одежда": "Потёртая разгрузка и плотная куртка", "Инвентарь": "Дробовик (8 патронов), пожарный топор, рация, аптечка", "Здоровье / Заражение": "100% (Чист)" }, relationships: { "Алиса": "Защищает её как младшую сестру" } },
+            { id: "c2", name: "Алиса", type: "character", emoji: "🏹", x: 15, y: 15, faction: "Община «Ковчег»", status: "Дежурит на крыше с биноклем", description: "Ловкая разведчица лагеря, бесшумно передвигается по крышам.", customStats: { "Внешность": "Подтянутая девушка 22 лет с коротким хвостом", "Характер": "Смелая, острая на язык, наблюдательная", "Одежда": "Лёгкая камуфляжная куртка и кеды", "Инвентарь": "Спортивный арбалет, бинокль, рация, отмычки", "Здоровье / Заражение": "100% (Чист)" }, relationships: { "Виктор Громов": "Глубокое уважение" } }
+          ],
+          chronicle: [{ id: "chr0", turnInfo: "Начало", timeInfo: "🕒 2028:10:03:16", playerPrompt: "Пресет: Зомби-апокалипсис", text: "Над разрушенными кварталами опускается туман. Запасы продовольствия в «Ковчеге» подходят к концу." }],
+          dialogs: [], items: [], lastTurnMoves: [], lastTurnMarkers: []
+        };
+      } else if (presetKey === "planet") {
+        worldState = {
+          worldName: "Экзопланета Кеплер-Прайм",
+          worldDescription: "Научная фантастика (2340 год). Неизведанная планета с биолюминесцентными джунглями, кристаллическими пустошами и руинами древней инопланетной цивилизации.",
+          aiRules: "Сеттинг: космоопера и колонизация чужой планеты в 2340 году. Используй бластеры, скафандры, дронов, ксенобиологию и космические технологии.",
+          turn: 1, gridWidth: 60, gridHeight: 60, cellScaleValue: 1, cellScaleUnit: "км", autonomyLevel: "medium", weather: "☀️ Ясно",
+          worldClock: { year: 2340, month: 3, day: 1, hour: 11 }, possessedCharId: null,
+          globalCharStats: [...baseStats, { name: "Заряд экзокостюма", hint: "энергия систем жизнеобеспечения", rawLabel: "Заряд экзокостюма", defaultValue: "100%", isStatic: false }],
+          factions: [
+            { id: "f1", name: "Миссия Земли «Горизонт»", color: "#3b82f6", diplomacy: "Исследует планету и строит колонию", description: "Экспедиционный корпус учёных, инженеров и космодесанта." },
+            { id: "f2", name: "Стражи Монолита (Ксеносы)", color: "#10b981", diplomacy: "Охраняет древние руины от чужаков", description: "Автономные биомеханические создания древней расы." }
+          ],
+          cells: {
+            "30,30": { x: 30, y: 30, name: "Купольная база «Аванпост-7»", color: "#2563eb", faction: "Миссия Земли «Горизонт»", description: "Геодезические купола, посадочная площадка шаттла и реактор." },
+            "33,28": { x: 33, y: 28, name: "Светящийся Кристальный Лес", color: "#059669", faction: "", description: "Инопланетные заросли, богатые энергетическими кристаллами." },
+            "35,26": { x: 35, y: 26, name: "Поющий Монолит Древних", color: "#9333ea", faction: "Стражи Монолита (Ксеносы)", description: "Парящий обелиск неизвестной цивилизации." }
+          },
+          objects: [
+            { id: "s1", name: "Колониальный модуль «Аванпост-7»", type: "settlement", emoji: "🛸", x: 30, y: 30, faction: "Миссия Земли «Горизонт»", status: "Функционирует штатно", description: "Главная база колонистов." },
+            { id: "c1", name: "Командор Вэнс", type: "character", emoji: "👨‍🚀", x: 30, y: 30, faction: "Миссия Земли «Горизонт»", status: "Координирует разведку сектора", description: "Руководитель планетарной экспедиции.", customStats: { "Внешность": "Высокий офицер с волевым лицом", "Характер": "Хладнокровный лидер, ставит безопасность базы превыше всего", "Одежда": "Тяжёлый тактический скафандр «Титан»", "Инвентарь": "Плазменный карабин, голо-коммуникатор, дрон-разведчик", "Заряд экзокостюма": "100%" }, relationships: { "Доктор Елена Соколова": "Спорит о риске изучения Монолита" } },
+            { id: "c2", name: "Доктор Елена Соколова", type: "character", emoji: "👩‍🔬", x: 33, y: 28, faction: "Миссия Земли «Горизонт»", status: "Сканирует энергетические кристаллы", description: "Ведущий ксенобиолог и археолог экспедиции.", customStats: { "Внешность": "Молодая учёная с живым взглядом", "Характер": "Любознательная, одержима тайнами планеты", "Одежда": "Научный лёгкий экзокостюм", "Инвентарь": "Квантовый сканер, контейнеры с образцами, лазерный резак", "Заряд экзокостюма": "90%" }, relationships: { "Командор Вэнс": "Ценит его защиту, но считает слишком осторожным" } }
+          ],
+          chronicle: [{ id: "chr0", turnInfo: "Посадка", timeInfo: "🕒 2340:03:01:11", playerPrompt: "Пресет: Другая планета", text: "Экспедиция «Горизонт» успешно развернула купола «Аванпоста-7». На северо-востоке датчики засекли мощный импульс от древнего Монолита." }],
+          dialogs: [], items: [{ id: "i1", name: "Энергокристалл Кеплера", emoji: "💎", category: "Ксено-ресурс", description: "Излучает чистую резонансную энергию." }], lastTurnMoves: [], lastTurnMarkers: []
+        };
+      }
+
+      closeModal("presets-modal");
+      saveToLocalStorage();
+      centerMap(true);
+      renderAllTabs();
+      drawMap();
+    }
+
+    /********************************************************************
+     * 2. МАСШТАБ, ВРЕМЯ, ПОГОДА И ФРАКЦИИ
+     ********************************************************************/
+    function ensureGridAndScale() {
+      worldState.gridWidth = Math.max(2, Math.min(300, parseInt(worldState.gridWidth) || 60));
+      worldState.gridHeight = Math.max(2, Math.min(300, parseInt(worldState.gridHeight) || 60));
+      worldState.cellScaleValue = Math.max(1, parseFloat(worldState.cellScaleValue) || 1);
+      if (worldState.cellScaleUnit !== "м" && worldState.cellScaleUnit !== "км") worldState.cellScaleUnit = "км";
+      if (!["low", "medium", "high"].includes(worldState.autonomyLevel)) worldState.autonomyLevel = "medium";
+      if (!worldState.weather) worldState.weather = "☀️ Ясно";
+      if (!Array.isArray(worldState.factions)) worldState.factions = [];
+      if (!Array.isArray(worldState.lastTurnMoves)) worldState.lastTurnMoves = [];
+      if (!Array.isArray(worldState.lastTurnMarkers)) worldState.lastTurnMarkers = [];
+
+      for (const obj of worldState.objects) {
+        obj.x = clampX(obj.x);
+        obj.y = clampY(obj.y);
+      }
+      if (activeCell) {
+        activeCell.x = clampX(activeCell.x);
+        activeCell.y = clampY(activeCell.y);
+      }
+    }
+
+    function cycleWeatherQuick() {
+      const idx = WEATHER_LIST.indexOf(worldState.weather);
+      worldState.weather = WEATHER_LIST[(idx + 1) % WEATHER_LIST.length];
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function getFactionColor(factionName) {
+      if (!factionName) return null;
+      const f = (worldState.factions || []).find((x) => x.name.toLowerCase() === String(factionName).toLowerCase());
+      return f ? f.color : null;
+    }
+
+    function addOrUpdateFaction() {
+      const name = document.getElementById("faction-name-input").value.trim();
+      const color = document.getElementById("faction-color-input").value;
+      const diplomacy = document.getElementById("faction-diplomacy-input").value.trim() || "Нейтралитет";
+      const description = document.getElementById("faction-desc-input").value.trim();
+      if (!name) return alert("Введи название фракции!");
+
+      const existing = worldState.factions.find((f) => f.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        existing.color = color;
+        existing.diplomacy = diplomacy;
+        existing.description = description || existing.description;
+      } else {
+        worldState.factions.push({ id: "fac_" + Date.now(), name, color, diplomacy, description });
+      }
+      document.getElementById("faction-name-input").value = "";
+      document.getElementById("faction-diplomacy-input").value = "";
+      document.getElementById("faction-desc-input").value = "";
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function deleteFaction(facId) {
+      const f = worldState.factions.find((x) => x.id === facId);
+      if (!f || !confirm(`Удалить фракцию «${f.name}»?`)) return;
+      worldState.factions = worldState.factions.filter((x) => x.id !== facId);
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function updateFactionSelectDropdowns() {
+      const optionsHtml = `<option value="">Без фракции (Нейтральная)</option>` +
+        (worldState.factions || []).map((f) => `<option value="${escapeHtml(f.name)}">🚩 ${escapeHtml(f.name)}</option>`).join("");
+      ["paint-faction-select", "obj-faction-select", "char-edit-faction"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const cur = el.value;
+          el.innerHTML = optionsHtml;
+          el.value = cur;
+        }
+      });
+    }
+
+    function renderFactionsTab() {
+      updateFactionSelectDropdowns();
+      const el = document.getElementById("factions-list");
+      if (!worldState.factions || worldState.factions.length === 0) {
+        el.innerHTML = `<div class="empty-state">Фракций пока нет. Создай королевство, клан или корпорацию выше — или ИИ сам сформирует их по ходу истории!</div>`;
+        return;
+      }
+      el.innerHTML = worldState.factions.map((f) => {
+        const members = worldState.objects.filter((o) => o.type === "character" && !o.isDead && o.faction && o.faction.toLowerCase() === f.name.toLowerCase()).length;
+        const cellsCount = Object.values(worldState.cells).filter((c) => c.faction && c.faction.toLowerCase() === f.name.toLowerCase()).length;
+        return `
+          <div class="card" style="border-left: 4px solid ${f.color || '#3b82f6'};">
+            <div class="card-header">
+              <div class="card-title">
+                <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:${f.color};"></span>
+                <span>${escapeHtml(f.name)}</span>
+              </div>
+              <div style="display:flex; gap:4px;">
+                <span class="tag">👥 ${members} | 🗺️ ${cellsCount} кл.</span>
+                <button class="danger" style="padding:2px 6px; font-size:11px;" onclick="deleteFaction('${escapeJs(f.id)}')">✖</button>
+              </div>
+            </div>
+            <div style="font-size:12px; color:#fbbf24;"><b>⚔️ Дипломатия:</b> ${escapeHtml(f.diplomacy || "Нейтралитет")}</div>
+            <div class="card-desc">${escapeHtml(f.description || "")}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function onAutonomyLevelChange() {
+      worldState.autonomyLevel = document.getElementById("sim-autonomy-level").value || "medium";
+      saveToLocalStorage();
+    }
+
+    function clampX(v) {
+      const n = parseInt(v);
+      const max = (worldState.gridWidth || 60) - 1;
+      if (isNaN(n)) return Math.floor((worldState.gridWidth || 60) / 2);
+      return Math.max(0, Math.min(max, n));
+    }
+
+    function clampY(v) {
+      const n = parseInt(v);
+      const max = (worldState.gridHeight || 60) - 1;
+      if (isNaN(n)) return Math.floor((worldState.gridHeight || 60) / 2);
+      return Math.max(0, Math.min(max, n));
+    }
+
+    function getCellScaleText() {
+      ensureGridAndScale();
+      return `${worldState.cellScaleValue} ${worldState.cellScaleUnit}`;
+    }
+
+    function getGridAndScaleBadgeText() {
+      ensureGridAndScale();
+      return `${worldState.gridWidth}×${worldState.gridHeight} (1 кл.=${getCellScaleText()})`;
+    }
+
+    function calculateRealDistance(x1, y1, x2, y2) {
+      ensureGridAndScale();
+      const cellDist = Math.hypot(x2 - x1, y2 - y1);
+      if (cellDist === 0) return { cells: 0, realValue: 0, unit: worldState.cellScaleUnit, formatted: "0 " + worldState.cellScaleUnit };
+      const rawDist = cellDist * worldState.cellScaleValue;
+      const rounded = rawDist < 10 ? Math.round(rawDist * 10) / 10 : Math.round(rawDist);
+      return { cells: Math.round(cellDist * 10) / 10, realValue: rounded, unit: worldState.cellScaleUnit, formatted: `${rounded} ${worldState.cellScaleUnit}` };
+    }
+
+    function setScalePreset(w, h, val, unit) {
+      document.getElementById("scale-grid-w").value = w;
+      document.getElementById("scale-grid-h").value = h;
+      document.getElementById("scale-cell-val").value = val;
+      document.getElementById("scale-cell-unit").value = unit;
+    }
+
+    function saveScaleModal() {
+      pushUndoSnapshot();
+      worldState.gridWidth = Math.max(2, Math.min(300, parseInt(document.getElementById("scale-grid-w").value) || 50));
+      worldState.gridHeight = Math.max(2, Math.min(300, parseInt(document.getElementById("scale-grid-h").value) || 50));
+      worldState.cellScaleValue = Math.max(1, parseFloat(document.getElementById("scale-cell-val").value) || 1);
+      worldState.cellScaleUnit = document.getElementById("scale-cell-unit").value === "м" ? "м" : "км";
+      ensureGridAndScale();
+      clearSelection();
+      saveToLocalStorage();
+      centerMap(true);
+      renderAllTabs();
+      closeModal("scale-modal");
+    }
+
+    function ensureWorldClock() {
+      if (!worldState.worldClock || typeof worldState.worldClock !== "object") {
+        worldState.worldClock = { year: 1250, month: 5, day: 1, hour: 8 };
+      }
+      worldState.worldClock.year = parseInt(worldState.worldClock.year) || 1250;
+      worldState.worldClock.month = Math.max(1, Math.min(12, parseInt(worldState.worldClock.month) || 1));
+      worldState.worldClock.day = Math.max(1, Math.min(30, parseInt(worldState.worldClock.day) || 1));
+      worldState.worldClock.hour = Math.max(0, Math.min(23, parseInt(worldState.worldClock.hour) || 0));
+    }
+
+    function pad2(n) {
+      return String(Math.abs(parseInt(n) || 0)).padStart(2, "0");
+    }
+
+    function formatWorldClock(clock = worldState.worldClock) {
+      ensureWorldClock();
+      return `${clock.year}:${pad2(clock.month)}:${pad2(clock.day)}:${pad2(clock.hour)}`;
+    }
+
+    function getTimeOfDayLabel(hour = worldState.worldClock.hour) {
+      if (hour >= 5 && hour < 11) return "🌅 Утро";
+      if (hour >= 11 && hour < 18) return "☀️ День";
+      if (hour >= 18 && hour < 22) return "🌇 Вечер";
+      return "🌙 Ночь";
+    }
+
+    function formatWorldClockDetailed(clock = worldState.worldClock) {
+      ensureWorldClock();
+      return `${formatWorldClock(clock)} (${getTimeOfDayLabel(clock.hour)}, Погода: ${worldState.weather})`;
+    }
+
+    function advanceWorldClock(turns, valPerTurn, unit) {
+      ensureWorldClock();
+      const totalAmount = (parseInt(turns) || 1) * (parseInt(valPerTurn) || 1);
+      let hoursToAdd = totalAmount;
+      if (unit === "дн.") hoursToAdd = totalAmount * 24;
+      else if (unit === "мес.") hoursToAdd = totalAmount * 30 * 24;
+      else if (unit === "лет") hoursToAdd = totalAmount * 12 * 30 * 24;
+
+      let { year, month, day, hour } = worldState.worldClock;
+      hour += hoursToAdd;
+      while (hour >= 24) {
+        hour -= 24;
+        day += 1;
+        if (day > 30) {
+          day = 1;
+          month += 1;
+          if (month > 12) { month = 1; year += 1; }
+        }
+      }
+      worldState.worldClock = { year, month, day, hour };
+    }
+
+    function applyRawStringClock() {
+      const raw = document.getElementById("clock-raw-string").value.trim();
+      const parts = raw.split(":").map((p) => parseInt(p.trim()));
+      if (parts.length !== 4 || parts.some(isNaN)) return alert("Формат: ГГ:ММ:ДД:ЧЧ (например: 1250:05:14:08)!");
+      document.getElementById("clock-year-input").value = parts[0];
+      document.getElementById("clock-month-input").value = Math.max(1, Math.min(12, parts[1]));
+      document.getElementById("clock-day-input").value = Math.max(1, Math.min(30, parts[2]));
+      document.getElementById("clock-hour-input").value = Math.max(0, Math.min(23, parts[3]));
+    }
+
+    function saveWorldClockModal() {
+      worldState.worldClock = {
+        year: parseInt(document.getElementById("clock-year-input").value) || 1250,
+        month: Math.max(1, Math.min(12, parseInt(document.getElementById("clock-month-input").value) || 1)),
+        day: Math.max(1, Math.min(30, parseInt(document.getElementById("clock-day-input").value) || 1)),
+        hour: Math.max(0, Math.min(23, parseInt(document.getElementById("clock-hour-input").value) || 0))
+      };
+      worldState.weather = document.getElementById("clock-weather-select").value || "☀️ Ясно";
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+      closeModal("time-modal");
+    }
+
+    /********************************************************************
+     * 3. ОТРИСОВКА КАРТЫ: ФРАКЦИИ, ДЕНЬ/НОЧЬ, ПОГОДА, СТРЕЛКИ ДВИЖЕНИЯ
+     ********************************************************************/
+    const canvas = document.getElementById("map-canvas");
+    const ctx = canvas.getContext("2d");
+    const mapContainer = document.getElementById("map-container");
+
+    let camera = { x: 0, y: 0, cellSize: 28 };
+    let currentTool = "inspect";
+    let activeCell = { x: 0, y: 0 };
+    let hoverCell = null;
+    let selectedCells = new Set();
+
+    let isDraggingCamera = false;
+    let isPainting = false;
+    let rectStartCell = null;
+    let dragStartMouse = { x: 0, y: 0 };
+    let dragStartCam = { x: 0, y: 0 };
+    let spacePressed = false;
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") spacePressed = true;
+    });
+    window.addEventListener("keyup", (e) => { if (e.code === "Space") spacePressed = false; });
+
+    function resizeCanvas() {
+      canvas.width = mapContainer.clientWidth;
+      canvas.height = mapContainer.clientHeight;
+      drawMap();
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    function centerMap(autoFitZoom = false) {
+      ensureGridAndScale();
+      if (autoFitZoom) {
+        const maxDim = Math.max(worldState.gridWidth, worldState.gridHeight);
+        const minScreen = Math.min(canvas.width || 800, canvas.height || 600) * 0.78;
+        camera.cellSize = Math.max(16, Math.min(95, Math.floor(minScreen / maxDim)));
+      }
+      focusMapOnCell(Math.floor(worldState.gridWidth / 2), Math.floor(worldState.gridHeight / 2));
+    }
+
+    function focusMapOnCell(gx, gy) {
+      ensureGridAndScale();
+      const cx = clampX(gx), cy = clampY(gy);
+      camera.x = canvas.width / 2 - (cx + 0.5) * camera.cellSize;
+      camera.y = canvas.height / 2 - (cy + 0.5) * camera.cellSize;
+      activeCell = { x: cx, y: cy };
+      document.getElementById("quick-obj-coords").textContent = `(${cx}, ${cy})`;
+      renderCellInspector();
+      drawMap();
+    }
+
+    function zoomMap(factor, centerX = canvas.width / 2, centerY = canvas.height / 2) {
+      const oldSize = camera.cellSize;
+      const newSize = Math.max(6, Math.min(120, camera.cellSize * factor));
+      const scale = newSize / oldSize;
+      camera.x = centerX - (centerX - camera.x) * scale;
+      camera.y = centerY - (centerY - camera.y) * scale;
+      camera.cellSize = newSize;
+      drawMap();
+    }
+
+    function screenToGrid(sx, sy) {
+      ensureGridAndScale();
+      const gx = Math.floor((sx - camera.x) / camera.cellSize);
+      const gy = Math.floor((sy - camera.y) / camera.cellSize);
+      if (gx < 0 || gx >= worldState.gridWidth || gy < 0 || gy >= worldState.gridHeight) return null;
+      return { x: gx, y: gy };
+    }
+
+    function getObjectsByCellMap() {
+      const map = {};
+      for (const obj of worldState.objects) {
+        if (obj.isDead) continue; // Павшие хранятся в архиве, а на карте лежит объект их Останки
+        if (obj.x < 0 || obj.x >= worldState.gridWidth || obj.y < 0 || obj.y >= worldState.gridHeight) continue;
+        const key = `${obj.x},${obj.y}`;
+        if (!map[key]) map[key] = [];
+        map[key].push(obj);
+      }
+      return map;
+    }
+
+    function getPossessedChar() {
+      if (!worldState.possessedCharId) return null;
+      const found = worldState.objects.find((o) => o.id === worldState.possessedCharId && o.type === "character" && !o.isDead);
+      if (!found) {
+        worldState.possessedCharId = null;
+        return null;
+      }
+      return found;
+    }
+
+    function drawArrow(fromX, fromY, toX, toY, color) {
+      const headlen = 8;
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const angle = Math.atan2(dy, dx);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(toX, toY);
+      ctx.lineTo(toX - headlen * Math.cos(angle - Math.PI / 6), toY - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(toX - headlen * Math.cos(angle + Math.PI / 6), toY - headlen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawMap() {
+      ensureGridAndScale();
+      ensureWorldClock();
+      const W = worldState.gridWidth;
+      const H = worldState.gridHeight;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cs = camera.cellSize;
+      const startX = Math.max(0, Math.floor(-camera.x / cs));
+      const endX = Math.min(W - 1, Math.ceil((canvas.width - camera.x) / cs));
+      const startY = Math.max(0, Math.floor(-camera.y / cs));
+      const endY = Math.min(H - 1, Math.ceil((canvas.height - camera.y) / cs));
+
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(camera.x, camera.y, W * cs, H * cs);
+
+      // 1. Клетки местности и границы фракций
+      for (const key in worldState.cells) {
+        const cell = worldState.cells[key];
+        if (cell.x < startX || cell.x > endX || cell.y < startY || cell.y > endY) continue;
+        if (cell.x >= W || cell.y >= H) continue;
+        const px = camera.x + cell.x * cs;
+        const py = camera.y + cell.y * cs;
+        ctx.fillStyle = cell.color || "#334155";
+        ctx.fillRect(px, py, cs, cs);
+
+        const facColor = getFactionColor(cell.faction);
+        if (facColor && cs >= 10) {
+          ctx.strokeStyle = facColor;
+          ctx.lineWidth = Math.max(2, cs * 0.1);
+          ctx.strokeRect(px + 1, py + 1, cs - 2, cs - 2);
+        }
+      }
+
+      // 2. Выделение кистью
+      if (selectedCells.size > 0) {
+        ctx.fillStyle = "rgba(59, 130, 246, 0.38)";
+        ctx.strokeStyle = "#60a5fa";
+        ctx.lineWidth = 1.5;
+        selectedCells.forEach((key) => {
+          const [cx, cy] = key.split(",").map(Number);
+          if (cx < startX || cx > endX || cy < startY || cy > endY) return;
+          const px = camera.x + cx * cs, py = camera.y + cy * cs;
+          ctx.fillRect(px, py, cs, cs);
+          ctx.strokeRect(px + 0.5, py + 0.5, cs - 1, cs - 1);
+        });
+      }
+
+      // 3. Сетка
+      if (cs >= 9) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.07)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = startX; x <= endX + 1; x++) {
+          const px = Math.floor(camera.x + x * cs) + 0.5;
+          ctx.moveTo(px, Math.max(0, camera.y));
+          ctx.lineTo(px, Math.min(canvas.height, camera.y + H * cs));
+        }
+        for (let y = startY; y <= endY + 1; y++) {
+          const py = Math.floor(camera.y + y * cs) + 0.5;
+          ctx.moveTo(Math.max(0, camera.x), py);
+          ctx.lineTo(Math.min(canvas.width, camera.x + W * cs), py);
+        }
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "#475569";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(camera.x, camera.y, W * cs, H * cs);
+
+      // 4. Стрелки перемещений за последний ход
+      if (Array.isArray(worldState.lastTurnMoves) && cs >= 10) {
+        for (const mv of worldState.lastTurnMoves) {
+          const x1 = camera.x + (mv.fromX + 0.5) * cs;
+          const y1 = camera.y + (mv.fromY + 0.5) * cs;
+          const x2 = camera.x + (mv.toX + 0.5) * cs;
+          const y2 = camera.y + (mv.toY + 0.5) * cs;
+          drawArrow(x1, y1, x2, y2, "rgba(56, 189, 248, 0.85)");
+        }
+      }
+
+      // 5. Объекты и персонажи
+      const possessed = getPossessedChar();
+      const objMap = getObjectsByCellMap();
+
+      for (const key in objMap) {
+        const list = objMap[key];
+        const [cx, cy] = key.split(",").map(Number);
+        if (cx < startX || cx > endX || cy < startY || cy > endY) continue;
+        const px = camera.x + cx * cs, py = camera.y + cy * cs;
+
+        const firstWithFac = list.find((o) => o.faction && getFactionColor(o.faction));
+        if (firstWithFac && cs >= 12) {
+          ctx.strokeStyle = getFactionColor(firstWithFac.faction);
+          ctx.lineWidth = 2;
+          ctx.strokeRect(px + 1.5, py + 1.5, cs - 3, cs - 3);
+        }
+
+        const hasPossessedHere = possessed && possessed.x === cx && possessed.y === cy;
+        if (hasPossessedHere) {
+          ctx.fillStyle = "rgba(16, 185, 129, 0.28)";
+          ctx.fillRect(px, py, cs, cs);
+          ctx.strokeStyle = "#10b981";
+          ctx.lineWidth = 2.5;
+          ctx.strokeRect(px + 1, py + 1, cs - 2, cs - 2);
+        }
+
+        if (cs >= 14) {
+          const priority = { settlement: 1, character: 2, building: 3, item: 4, other: 5 };
+          const sorted = [...list].sort((a, b) => {
+            if (possessed && a.id === possessed.id) return -1;
+            if (possessed && b.id === possessed.id) return 1;
+            return (priority[a.type] || 5) - (priority[b.type] || 5);
+          });
+          const mainEmoji = sorted[0].emoji || "📍";
+          ctx.font = `${Math.floor(cs * 0.62)}px sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(mainEmoji, px + cs / 2, py + cs / 2 + 1);
+
+          if (list.length > 1 && cs >= 20) {
+            ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+            const badgeSize = Math.max(11, Math.floor(cs * 0.32));
+            ctx.fillRect(px + cs - badgeSize, py, badgeSize, badgeSize);
+            ctx.fillStyle = "#60a5fa";
+            ctx.font = `bold ${Math.floor(badgeSize * 0.75)}px sans-serif`;
+            ctx.fillText(String(list.length), px + cs - badgeSize / 2, py + badgeSize / 2);
+          }
+        } else {
+          ctx.fillStyle = hasPossessedHere ? "#10b981" : "#facc15";
+          ctx.beginPath();
+          ctx.arc(px + cs / 2, py + cs / 2, Math.max(2, cs * 0.28), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 6. Освещение: День / Вечер / Ночь и Погода на холсте
+      const hour = worldState.worldClock.hour;
+      const isNight = hour >= 21 || hour <= 4;
+      const isEveningOrDawn = (hour >= 18 && hour <= 20) || (hour >= 5 && hour <= 6);
+
+      if (isNight) {
+        ctx.fillStyle = "rgba(4, 9, 26, 0.48)";
+        ctx.fillRect(camera.x, camera.y, W * cs, H * cs);
+        // Тёплые огни вокруг поселений и построек ночью
+        for (const key in objMap) {
+          const [cx, cy] = key.split(",").map(Number);
+          if (cx < startX || cx > endX || cy < startY || cy > endY) continue;
+          const centerX = camera.x + (cx + 0.5) * cs;
+          const centerY = camera.y + (cy + 0.5) * cs;
+          const grad = ctx.createRadialGradient(centerX, centerY, cs * 0.1, centerX, centerY, cs * 1.4);
+          grad.addColorStop(0, "rgba(251, 191, 36, 0.28)");
+          grad.addColorStop(1, "rgba(251, 191, 36, 0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, cs * 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (isEveningOrDawn) {
+        ctx.fillStyle = "rgba(249, 115, 22, 0.12)";
+        ctx.fillRect(camera.x, camera.y, W * cs, H * cs);
+      }
+
+      if (worldState.weather.includes("Туман")) {
+        ctx.fillStyle = "rgba(203, 213, 225, 0.14)";
+        ctx.fillRect(camera.x, camera.y, W * cs, H * cs);
+      }
+
+      // 7. Облачка событий (💬 диалоги, ⚔️ события) поверх клеток
+      if (Array.isArray(worldState.lastTurnMarkers) && cs >= 16) {
+        for (const mk of worldState.lastTurnMarkers) {
+          if (mk.x < startX || mk.x > endX || mk.y < startY || mk.y > endY) continue;
+          const px = camera.x + mk.x * cs;
+          const py = camera.y + mk.y * cs;
+          ctx.font = `${Math.max(11, Math.floor(cs * 0.36))}px sans-serif`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText(mk.icon, px + 1, py + 1);
+        }
+      }
+
+      if (activeCell && activeCell.x < W && activeCell.y < H) {
+        ctx.strokeStyle = "#facc15";
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(camera.x + activeCell.x * cs + 1, camera.y + activeCell.y * cs + 1, cs - 2, cs - 2);
+      }
+      if (hoverCell) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(camera.x + hoverCell.x * cs, camera.y + hoverCell.y * cs, cs, cs);
+      }
+    }
+
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      zoomMap(e.deltaY < 0 ? 1.15 : 0.87, e.clientX - rect.left, e.clientY - rect.top);
+    }, { passive: false });
+
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    canvas.addEventListener("mousedown", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const cell = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
+      if (e.button === 2 || e.button === 1 || currentTool === "pan" || spacePressed) {
+        isDraggingCamera = true;
+        dragStartMouse = { x: e.clientX, y: e.clientY };
+        dragStartCam = { x: camera.x, y: camera.y };
+        return;
+      }
+      if (!cell) return;
+      if (currentTool === "inspect") {
+        selectCellForInspector(cell.x, cell.y);
+      } else if (currentTool === "brush") {
+        isPainting = true;
+        applyBrushSelection(cell.x, cell.y);
+        selectCellForInspector(cell.x, cell.y);
+      } else if (currentTool === "rect") {
+        isPainting = true;
+        rectStartCell = cell;
+        if (!e.shiftKey) selectedCells.clear();
+        updateRectSelection(rectStartCell, cell);
+      }
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const cell = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
+      hoverCell = cell;
+      updateHud(cell);
+      if (isDraggingCamera) {
+        camera.x = dragStartCam.x + (e.clientX - dragStartMouse.x);
+        camera.y = dragStartCam.y + (e.clientY - dragStartMouse.y);
+        drawMap();
+        return;
+      }
+      if (isPainting && cell) {
+        if (currentTool === "brush") applyBrushSelection(cell.x, cell.y);
+        else if (currentTool === "rect" && rectStartCell) updateRectSelection(rectStartCell, cell);
+      } else {
+        drawMap();
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      isDraggingCamera = false;
+      isPainting = false;
+      rectStartCell = null;
+    });
+
+    function applyBrushSelection(cx, cy) {
+      ensureGridAndScale();
+      const radius = Math.max(1, Math.min(15, parseInt(document.getElementById("brush-size").value) || 1));
+      const offset = radius - 1;
+      for (let dx = -offset; dx <= offset; dx++) {
+        for (let dy = -offset; dy <= offset; dy++) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx >= 0 && nx < worldState.gridWidth && ny >= 0 && ny < worldState.gridHeight) selectedCells.add(`${nx},${ny}`);
+        }
+      }
+      document.getElementById("selected-cells-count").textContent = selectedCells.size;
+      drawMap();
+    }
+
+    function updateRectSelection(start, end) {
+      ensureGridAndScale();
+      selectedCells.clear();
+      const minX = Math.max(0, Math.min(start.x, end.x)), maxX = Math.min(worldState.gridWidth - 1, Math.max(start.x, end.x));
+      const minY = Math.max(0, Math.min(start.y, end.y)), maxY = Math.min(worldState.gridHeight - 1, Math.max(start.y, end.y));
+      for (let x = minX; x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) selectedCells.add(`${x},${y}`);
+      }
+      document.getElementById("selected-cells-count").textContent = selectedCells.size;
+      drawMap();
+    }
+
+    function clearSelection() {
+      selectedCells.clear();
+      document.getElementById("selected-cells-count").textContent = "0";
+      drawMap();
+    }
+
+    function setTool(tool) {
+      currentTool = tool;
+      document.querySelectorAll(".tool-btn").forEach((b) => b.classList.remove("active"));
+      document.getElementById(`tool-${tool}`).classList.add("active");
+      mapContainer.classList.toggle("crosshair", tool === "brush" || tool === "rect");
+    }
+
+    function setPaintColor(hex) {
+      document.getElementById("paint-color").value = hex;
+    }
+
+    function updateHud(cell) {
+      document.getElementById("hud-cell-scale-label").textContent = `1 кл. = ${getCellScaleText()}`;
+      document.getElementById("hud-time-of-day").textContent = `${getTimeOfDayLabel()} | ${worldState.weather}`;
+      document.getElementById("hud-char-count").textContent = worldState.objects.filter((o) => o.type === "character" && !o.isDead).length;
+      document.getElementById("hud-dead-count").textContent = worldState.objects.filter((o) => o.type === "character" && o.isDead).length;
+      document.getElementById("hud-total-obj-count").textContent = worldState.objects.filter((o) => !o.isDead).length;
+      if (!cell) {
+        document.getElementById("hud-coords").textContent = "Вне карты";
+        document.getElementById("hud-terrain").textContent = "—";
+        document.getElementById("hud-faction-tag").textContent = "";
+        return;
+      }
+      const cellData = worldState.cells[`${cell.x},${cell.y}`];
+      document.getElementById("hud-coords").textContent = `X: ${cell.x}, Y: ${cell.y}`;
+      document.getElementById("hud-terrain").textContent = cellData ? cellData.name : "Пустая клетка";
+      document.getElementById("hud-faction-tag").textContent = cellData && cellData.faction ? `[🚩 ${cellData.faction}]` : "";
+    }
+
+    /********************************************************************
+     * 4. ПЕРСОНАЖИ: СТАТУСЫ, ОТНОШЕНИЯ, СМЕРТЬ И МОГИЛЫ, ВСЕЛЕНИЕ
+     ********************************************************************/
+    function possessCharacter(charId) {
+      const charObj = worldState.objects.find((o) => o.id === charId && o.type === "character" && !o.isDead);
+      if (!charObj) return alert("Нельзя вселиться в павшего персонажа! Сначала воскресите его в досье.");
+      worldState.possessedCharId = charObj.id;
+      saveToLocalStorage();
+      focusMapOnCell(charObj.x, charObj.y);
+      renderAllTabs();
+    }
+
+    function unpossessCharacter() {
+      worldState.possessedCharId = null;
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function focusPossessedChar() {
+      const p = getPossessedChar();
+      if (p) focusMapOnCell(p.x, p.y);
+    }
+
+    function togglePossessFromModal() {
+      const id = document.getElementById("char-edit-id").value.trim();
+      if (!id) return alert("Сначала сохрани нового персонажа!");
+      if (worldState.possessedCharId === id) unpossessCharacter();
+      else possessCharacter(id);
+      closeModal("char-modal");
+    }
+
+    // Превращение погибшего персонажа в Павшего + создание Могилы/Останков с лутом на клетке
+    function markCharacterDeadAndSpawnGrave(charObj, causeText = "Пал в бою / событиях мира") {
+      if (!charObj || charObj.isDead) return;
+      charObj.isDead = true;
+      charObj.status = `💀 Погиб (Ход ${worldState.turn}, ${formatWorldClock()}): ${causeText}`;
+      if (worldState.possessedCharId === charObj.id) worldState.possessedCharId = null;
+
+      const inv = (charObj.customStats && charObj.customStats["Инвентарь"]) || "Личные вещи";
+      const clothes = (charObj.customStats && charObj.customStats["Одежда"]) || "";
+
+      worldState.objects.push({
+        id: "grave_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        name: `Останки: ${charObj.name}`,
+        type: "other",
+        emoji: "⚰️",
+        x: charObj.x,
+        y: charObj.y,
+        faction: charObj.faction || "",
+        status: `Место гибели (${formatWorldClock()})`,
+        description: `Здесь покоится ${charObj.name}. Причина: ${causeText}. Оставшиеся вещи и экипировка: ${inv}${clothes ? " | " + clothes : ""}.`
+      });
+    }
+
+    function killOrResurrectFromModal() {
+      const id = document.getElementById("char-edit-id").value.trim();
+      const charObj = worldState.objects.find((o) => o.id === id);
+      if (!charObj) return;
+      pushUndoSnapshot();
+      if (charObj.isDead) {
+        charObj.isDead = false;
+        charObj.status = "Воскрешён игроком";
+      } else {
+        markCharacterDeadAndSpawnGrave(charObj, "По воле игрока");
+      }
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+      closeModal("char-modal");
+    }
+
+    function updatePossessionUI() {
+      const possessed = getPossessedChar();
+      const bar = document.getElementById("possession-bar");
+      const headerBadge = document.getElementById("ui-possess-badge");
+      const cmdLabel = document.getElementById("command-box-label");
+      const simBtn = document.getElementById("btn-simulate");
+
+      if (possessed) {
+        bar.classList.add("active");
+        headerBadge.style.display = "inline-flex";
+        document.getElementById("ui-possess-header-name").textContent = `${possessed.emoji || "🧍"} ${possessed.name}`;
+        document.getElementById("possess-bar-emoji").textContent = possessed.emoji || "🧍";
+        document.getElementById("possess-bar-name").textContent = possessed.name;
+        document.getElementById("possess-bar-coords").textContent = `(${possessed.x}, ${possessed.y})`;
+        cmdLabel.innerHTML = `🕹️ <b>Действие от лица «${escapeHtml(possessed.name)}»:</b> Куда ты идёшь, что делаешь или говоришь?`;
+        simBtn.textContent = `▶️ Сделать ход за ${possessed.name}`;
+      } else {
+        bar.classList.remove("active");
+        headerBadge.style.display = "none";
+        cmdLabel.textContent = "⚡ Панель управления: Что произойдёт в следующем ходу? (Оставь пустым — и мир сам будет строить здания, рождать героев и двигать сюжет!)";
+        simBtn.textContent = "▶️ Симулировать мир";
+      }
+    }
+
+    function parseStatLabel(rawInput) {
+      const trimmed = String(rawInput || "").trim();
+      const match = trimmed.match(/^([^\(]+)\((.+)\)\s*$/);
+      if (match) return { name: match[1].trim(), hint: match[2].trim(), rawLabel: trimmed };
+      return { name: trimmed, hint: "", rawLabel: trimmed };
+    }
+
+    function ensureDefaultGlobalStatsExist() {
+      if (!Array.isArray(worldState.globalCharStats) || worldState.globalCharStats.length === 0) {
+        worldState.globalCharStats = getDefaultGlobalStats();
+        return;
+      }
+      const defaults = getDefaultGlobalStats();
+      for (let i = defaults.length - 1; i >= 0; i--) {
+        const def = defaults[i];
+        const found = worldState.globalCharStats.find((s) => s.name.toLowerCase() === def.name.toLowerCase());
+        if (!found) worldState.globalCharStats.unshift(def);
+        else if (typeof found.isStatic !== "boolean") found.isStatic = def.isStatic;
+      }
+    }
+
+    function ensureCharacterFields(obj) {
+      if (obj.type !== "character") return obj;
+      if (!obj.customStats || typeof obj.customStats !== "object") obj.customStats = {};
+      if (!obj.personalStatLocks || typeof obj.personalStatLocks !== "object") obj.personalStatLocks = {};
+      if (!obj.relationships || typeof obj.relationships !== "object") obj.relationships = {};
+      if (typeof obj.faction !== "string") obj.faction = "";
+      if (typeof obj.isDead !== "boolean") obj.isDead = false;
+
+      ensureDefaultGlobalStatsExist();
+      for (const gs of worldState.globalCharStats) {
+        if (obj.customStats[gs.name] === undefined) {
+          obj.customStats[gs.name] = gs.defaultValue || "Не указано";
+        }
+      }
+      return obj;
+    }
+
+    function isStatLockedForChar(charObj, statName) {
+      if (charObj && charObj.personalStatLocks && typeof charObj.personalStatLocks[statName] === "boolean") {
+        return charObj.personalStatLocks[statName];
+      }
+      const gs = worldState.globalCharStats.find((s) => s.name.toLowerCase() === statName.toLowerCase());
+      if (gs) return !!gs.isStatic;
+      return true;
+    }
+
+    function isPlaceholderStatValue(val) {
+      const v = String(val ?? "").trim().toLowerCase();
+      return !v || v === "не указано" || v === "не описана" || v === "не описан" || v === "—" || v === "-";
+    }
+
+    function syncAllCharactersWithGlobalStats() {
+      ensureDefaultGlobalStatsExist();
+      for (const obj of worldState.objects) {
+        if (obj.type === "character") ensureCharacterFields(obj);
+      }
+    }
+
+    function addGlobalCharStat() {
+      const inputEl = document.getElementById("new-global-stat-input");
+      const defaultEl = document.getElementById("new-global-stat-default");
+      const staticCheckbox = document.getElementById("new-global-stat-static");
+      const raw = inputEl.value.trim();
+      const defaultValue = defaultEl.value.trim() || "0";
+      const isStatic = staticCheckbox.checked;
+      if (!raw) return alert("Введи название общего статуса!");
+      const parsed = parseStatLabel(raw);
+      if (!parsed.name) return;
+
+      const existing = worldState.globalCharStats.find((s) => s.name.toLowerCase() === parsed.name.toLowerCase());
+      if (existing) {
+        existing.hint = parsed.hint;
+        existing.rawLabel = parsed.rawLabel;
+        existing.defaultValue = defaultValue;
+        existing.isStatic = isStatic;
+      } else {
+        worldState.globalCharStats.push({ name: parsed.name, hint: parsed.hint, rawLabel: parsed.rawLabel, defaultValue, isStatic });
+      }
+      syncAllCharactersWithGlobalStats();
+      inputEl.value = "";
+      saveToLocalStorage();
+      renderAllTabs();
+    }
+
+    function toggleGlobalStatLock(statName) {
+      const gs = worldState.globalCharStats.find((s) => s.name === statName);
+      if (!gs) return;
+      gs.isStatic = !gs.isStatic;
+      saveToLocalStorage();
+      renderAllTabs();
+    }
+
+    function removeGlobalCharStat(statName) {
+      if (!confirm(`Убрать общий статус «${statName}» у всех персонажей?`)) return;
+      worldState.globalCharStats = worldState.globalCharStats.filter((s) => s.name !== statName);
+      for (const obj of worldState.objects) {
+        if (obj.type === "character" && obj.customStats) delete obj.customStats[statName];
+      }
+      saveToLocalStorage();
+      renderAllTabs();
+    }
+
+    function renderCharactersTab() {
+      syncAllCharactersWithGlobalStats();
+      const gsContainer = document.getElementById("global-stats-list");
+      gsContainer.innerHTML = worldState.globalCharStats.map((gs) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; background:var(--bg-dark); border:1px solid var(--border); padding:5px 7px; border-radius:6px; font-size:11.5px;">
+          <div style="flex:1;">
+            <strong style="color:#93c5fd;">${escapeHtml(gs.name)}</strong>
+            ${gs.hint ? `<span style="color:var(--text-muted); font-size:10.5px;"> (${escapeHtml(gs.hint)})</span>` : ""}
+          </div>
+          <div style="display:flex; gap:4px; align-items:center;">
+            <button class="lock-btn ${gs.isStatic ? 'static' : 'dynamic'}" onclick="toggleGlobalStatLock('${escapeJs(gs.name)}')">
+              ${gs.isStatic ? "🔒 Статич." : "🔄 Измен."}
+            </button>
+            <button class="danger" style="padding:2px 5px; font-size:10.5px;" onclick="removeGlobalCharStat('${escapeJs(gs.name)}')">✖</button>
+          </div>
+        </div>
+      `).join("");
+
+      const listEl = document.getElementById("characters-list");
+      const query = (document.getElementById("char-search-input")?.value || "").toLowerCase().trim();
+      const filterMode = document.getElementById("char-filter-mode")?.value || "alive";
+
+      const chars = worldState.objects
+        .filter((o) => o.type === "character")
+        .filter((c) => {
+          if (filterMode === "alive" && c.isDead) return false;
+          if (filterMode === "dead" && !c.isDead) return false;
+          if (!query) return true;
+          const statsStr = JSON.stringify(c.customStats || {}).toLowerCase();
+          return (c.name || "").toLowerCase().includes(query) || (c.faction || "").toLowerCase().includes(query) || statsStr.includes(query);
+        });
+
+      if (chars.length === 0) {
+        listEl.innerHTML = `<div class="empty-state">В этой категории пока нет персонажей.</div>`;
+        return;
+      }
+      listEl.innerHTML = chars.map((c) => renderCharacterCardHtml(c)).join("");
+    }
+
+    function renderCharacterCardHtml(c) {
+      ensureCharacterFields(c);
+      const isPossessed = worldState.possessedCharId === c.id;
+      const possessedMe = getPossessedChar();
+      const canTalkToThisChar = possessedMe && possessedMe.id !== c.id && !c.isDead;
+      const facColor = getFactionColor(c.faction);
+
+      const statsEntries = Object.entries(c.customStats || {});
+      const statsHtml = statsEntries.length > 0
+        ? `<div class="stat-badge-list">
+            ${statsEntries.map(([k, v]) => {
+              const locked = isStatLockedForChar(c, k);
+              return `<div class="stat-pill"><span>${locked ? '🔒' : '🔄'}</span> <strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</div>`;
+            }).join("")}
+           </div>`
+        : "";
+
+      const relEntries = Object.entries(c.relationships || {});
+      const relsHtml = relEntries.length > 0
+        ? `<div class="stat-badge-list" style="margin-top:4px;">
+            ${relEntries.map(([targetName, relVal]) => `<div class="rel-pill">❤️ <b>${escapeHtml(targetName)}:</b> ${escapeHtml(relVal)}</div>`).join("")}
+           </div>`
+        : "";
+
+      return `
+        <div class="card clickable-char ${isPossessed ? 'possessed-card' : ''} ${c.isDead ? 'dead-card' : ''}" style="${facColor ? `border-left: 4px solid ${facColor};` : ''}" onclick="openCharacterModal('${escapeJs(c.id)}')">
+          <div class="card-header">
+            <div class="card-title">
+              <span style="font-size:19px;">${escapeHtml(c.isDead ? "💀" : (c.emoji || "🧍"))}</span>
+              <span>${escapeHtml(c.name)}</span>
+              ${c.faction ? `<span class="tag" style="background:${facColor || '#334155'}; color:#fff;">🚩 ${escapeHtml(c.faction)}</span>` : ""}
+              ${isPossessed ? `<span class="tag" style="background:var(--possess); color:#fff;">🕹️ ВЫ</span>` : ""}
+            </div>
+            <div style="display:flex; gap:3px; align-items:center; flex-wrap:wrap;" onclick="event.stopPropagation()">
+              ${!c.isDead ? (
+                isPossessed
+                  ? `<button class="danger" style="padding:2px 6px; font-size:10.5px;" onclick="unpossessCharacter()">👻 Выйти</button>`
+                  : `<button class="possess-btn" style="padding:2px 6px; font-size:10.5px;" onclick="possessCharacter('${escapeJs(c.id)}')">🕹️</button>`
+              ) : ""}
+              ${canTalkToThisChar ? `<button class="primary" style="padding:2px 6px; font-size:10.5px;" onclick="openLiveTalkModal('${escapeJs(c.id)}')">💬</button>` : ""}
+              <button style="padding:2px 6px; font-size:10.5px;" onclick="focusMapOnCell(${c.x}, ${c.y})">🎯 (${c.x},${c.y})</button>
+              <button class="danger" style="padding:2px 5px; font-size:10.5px;" onclick="deleteObject('${escapeJs(c.id)}')">✖</button>
+            </div>
+          </div>
+          ${c.description ? `<div class="card-desc" style="color:#e2e8f0; font-size:12px;">🔒 <b>Описание:</b> ${escapeHtml(c.description)}</div>` : ""}
+          ${c.status ? `<div style="font-size:11.5px; color:${c.isDead ? '#fca5a5' : '#60a5fa'};">⚡ <b>Сейчас:</b> ${escapeHtml(c.status)}</div>` : ""}
+          ${statsHtml}
+          ${relsHtml}
+        </div>
+      `;
+    }
+
+    function openCharacterModal(charId) {
+      ensureGridAndScale();
+      syncAllCharactersWithGlobalStats();
+      updateFactionSelectDropdowns();
+      const isNew = !charId;
+      const charObj = !isNew ? worldState.objects.find((o) => o.id === charId) : null;
+      if (!isNew && !charObj) return;
+      if (charObj) ensureCharacterFields(charObj);
+
+      document.getElementById("char-modal-title").textContent = isNew ? "➕ Создание нового персонажа" : `👤 Досье: ${charObj.name}`;
+      document.getElementById("char-edit-id").value = charObj ? charObj.id : "";
+      document.getElementById("char-edit-emoji").value = charObj ? (charObj.emoji || "🧍") : "🧍";
+      document.getElementById("char-edit-name").value = charObj ? (charObj.name || "") : "";
+      document.getElementById("char-edit-faction").value = charObj ? (charObj.faction || "") : "";
+      document.getElementById("char-edit-x").value = charObj ? charObj.x : (activeCell ? activeCell.x : Math.floor(worldState.gridWidth / 2));
+      document.getElementById("char-edit-y").value = charObj ? charObj.y : (activeCell ? activeCell.y : Math.floor(worldState.gridHeight / 2));
+      document.getElementById("char-edit-desc").value = charObj ? (charObj.description || "") : "";
+      document.getElementById("char-edit-status").value = charObj ? (charObj.status || "Свободен") : "Только появился в мире";
+
+      document.getElementById("btn-delete-char-modal").style.display = isNew ? "none" : "inline-flex";
+      const killBtn = document.getElementById("btn-kill-char-modal");
+      const possessBtn = document.getElementById("btn-possess-char-modal");
+
+      if (isNew) {
+        killBtn.style.display = "none";
+        possessBtn.style.display = "none";
+      } else {
+        killBtn.style.display = "inline-flex";
+        killBtn.textContent = charObj.isDead ? "✨ Воскресить" : "💀 В павшие (Оставить могилу)";
+        possessBtn.style.display = charObj.isDead ? "none" : "inline-flex";
+        const isPossessed = worldState.possessedCharId === charObj.id;
+        possessBtn.textContent = isPossessed ? "👻 Выйти из тела" : "🕹️ Вселиться";
+        possessBtn.classList.toggle("active", isPossessed);
+      }
+
+      const statsContainer = document.getElementById("char-modal-stats-container");
+      statsContainer.innerHTML = "";
+      const usedKeys = new Set();
+
+      for (const gs of worldState.globalCharStats) {
+        usedKeys.add(gs.name);
+        const val = charObj && charObj.customStats && charObj.customStats[gs.name] !== undefined ? charObj.customStats[gs.name] : gs.defaultValue;
+        const displayKey = gs.hint ? `${gs.name} (${gs.hint})` : gs.name;
+        const locked = charObj ? isStatLockedForChar(charObj, gs.name) : !!gs.isStatic;
+        addPersonalStatRow(displayKey, val, true, locked);
+      }
+
+      if (charObj && charObj.customStats) {
+        for (const [k, v] of Object.entries(charObj.customStats)) {
+          if (!usedKeys.has(k)) addPersonalStatRow(k, v, false, isStatLockedForChar(charObj, k));
+        }
+      }
+
+      const relsContainer = document.getElementById("char-modal-rels-container");
+      relsContainer.innerHTML = "";
+      if (charObj && charObj.relationships) {
+        for (const [targetName, relDesc] of Object.entries(charObj.relationships)) {
+          addRelationshipRow(targetName, relDesc);
+        }
+      }
+      openModal("char-modal");
+    }
+
+    function addPersonalStatRow(keyText = "", valText = "", isGlobal = false, isLocked = true) {
+      const container = document.getElementById("char-modal-stats-container");
+      const row = document.createElement("div");
+      row.className = "char-stat-row";
+      row.dataset.locked = isLocked ? "true" : "false";
+      row.style.cssText = "display:flex; gap:5px; align-items:flex-start;";
+      row.innerHTML = `
+        <input type="text" class="stat-key-input" value="${escapeHtml(keyText)}" placeholder="Название статуса" style="flex:1.1;" ${isGlobal ? 'readonly' : ""} />
+        <textarea class="stat-val-input" style="flex:1.4; min-height:34px; height:34px; padding:5px 7px;" placeholder="Значение...">${escapeHtml(valText)}</textarea>
+        <button type="button" class="lock-btn ${isLocked ? 'static' : 'dynamic'}" onclick="toggleRowLock(this)">
+          ${isLocked ? "🔒 Статич." : "🔄 Измен."}
+        </button>
+        ${isGlobal ? "" : `<button type="button" class="danger" style="padding:5px 7px;" onclick="this.parentElement.remove()">✖</button>`}
+      `;
+      container.appendChild(row);
+    }
+
+    function addRelationshipRow(targetName = "", relDesc = "") {
+      const container = document.getElementById("char-modal-rels-container");
+      const row = document.createElement("div");
+      row.className = "char-rel-row";
+      row.style.cssText = "display:flex; gap:5px; align-items:center;";
+      row.innerHTML = `
+        <input type="text" class="rel-target-input" value="${escapeHtml(targetName)}" placeholder="Имя другого персонажа" style="flex:1;" />
+        <input type="text" class="rel-desc-input" value="${escapeHtml(relDesc)}" placeholder="Отношение (напр. Лучший друг / Влюблён / Враг)" style="flex:1.6;" />
+        <button type="button" class="danger" style="padding:5px 7px;" onclick="this.parentElement.remove()">✖</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function toggleRowLock(btn) {
+      const row = btn.parentElement;
+      const nowLocked = row.dataset.locked !== "true";
+      row.dataset.locked = nowLocked ? "true" : "false";
+      btn.className = `lock-btn ${nowLocked ? "static" : "dynamic"}`;
+      btn.textContent = nowLocked ? "🔒 Статич." : "🔄 Измен.";
+    }
+
+    function saveCharacterFromModal() {
+      const id = document.getElementById("char-edit-id").value.trim();
+      const emoji = document.getElementById("char-edit-emoji").value.trim() || "🧍";
+      const name = document.getElementById("char-edit-name").value.trim();
+      const faction = document.getElementById("char-edit-faction").value.trim();
+      const x = clampX(document.getElementById("char-edit-x").value);
+      const y = clampY(document.getElementById("char-edit-y").value);
+      const status = document.getElementById("char-edit-status").value.trim() || "Активен";
+      const description = document.getElementById("char-edit-desc").value.trim();
+      if (!name) return alert("Укажи имя персонажа!");
+
+      const customStats = {};
+      const personalStatLocks = {};
+      document.querySelectorAll("#char-modal-stats-container .char-stat-row").forEach((row) => {
+        const rawKey = row.querySelector(".stat-key-input").value.trim();
+        const val = row.querySelector(".stat-val-input").value.trim();
+        const isLocked = row.dataset.locked === "true";
+        if (rawKey) {
+          const parsed = parseStatLabel(rawKey);
+          customStats[parsed.name] = val;
+          personalStatLocks[parsed.name] = isLocked;
+        }
+      });
+
+      const relationships = {};
+      document.querySelectorAll("#char-modal-rels-container .char-rel-row").forEach((row) => {
+        const tName = row.querySelector(".rel-target-input").value.trim();
+        const rDesc = row.querySelector(".rel-desc-input").value.trim();
+        if (tName && rDesc) relationships[tName] = rDesc;
+      });
+
+      let charObj = id ? worldState.objects.find((o) => o.id === id) : null;
+      if (charObj) {
+        Object.assign(charObj, { name, type: "character", emoji, faction, x, y, status, description, customStats, personalStatLocks, relationships });
+      } else {
+        worldState.objects.push({
+          id: "char_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+          name, type: "character", emoji, faction, isDead: false, x, y, status, description, customStats, personalStatLocks, relationships
+        });
+      }
+
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+      closeModal("char-modal");
+    }
+
+    function deleteCharacterFromModal() {
+      const id = document.getElementById("char-edit-id").value.trim();
+      if (!id || !confirm("Удалить этого персонажа навсегда?")) return;
+      deleteObject(id);
+      closeModal("char-modal");
+    }
+
+    function jumpToCharFromModal() {
+      const x = clampX(document.getElementById("char-edit-x").value);
+      const y = clampY(document.getElementById("char-edit-y").value);
+      closeModal("char-modal");
+      focusMapOnCell(x, y);
+    }
+
+    /********************************************************************
+     * 5. ЖИВЫЕ ДИАЛОГИ С ОБНОВЛЕНИЕМ ОТНОШЕНИЙ
+     ********************************************************************/
+    function openLiveTalkModal(preselectedTargetId = null) {
+      const me = getPossessedChar();
+      if (!me) return alert("Сначала вселись в любого персонажа (кнопка «🕹️»), чтобы разговаривать от его лица!");
+      const otherChars = worldState.objects.filter((o) => o.type === "character" && !o.isDead && o.id !== me.id);
+      if (otherChars.length === 0) return alert("В мире пока нет других живых персонажей!");
+
+      document.getElementById("talk-my-char-name").textContent = `${me.emoji || "🧍"} ${me.name} (${me.x}, ${me.y})`;
+      const select = document.getElementById("talk-target-select");
+      select.innerHTML = otherChars.map((c) => {
+        const d = calculateRealDistance(me.x, me.y, c.x, c.y);
+        const distLabel = d.cells === 0 ? "📍 На одной клетке (Лично)" : `📏 Дистанция: ${d.formatted} (${c.x}, ${c.y})`;
+        return `<option value="${escapeHtml(c.id)}" ${c.id === preselectedTargetId ? "selected" : ""}>${escapeHtml(c.emoji || "🧍")} ${escapeHtml(c.name)} — ${distLabel}</option>`;
+      }).join("");
+
+      onTalkTargetChange();
+      document.getElementById("talk-message-input").value = "";
+      openModal("talk-modal");
+    }
+
+    function onTalkTargetChange() {
+      const me = getPossessedChar();
+      if (!me) return;
+      const targetId = document.getElementById("talk-target-select").value;
+      const target = worldState.objects.find((o) => o.id === targetId);
+      if (!target) return;
+
+      const d = calculateRealDistance(me.x, me.y, target.x, target.y);
+      const methodInput = document.getElementById("talk-method-input");
+      const reasonInput = document.getElementById("talk-reason-input");
+      const isCloseVoiceRange = d.cells === 0 || (d.unit === "м" && d.realValue <= 50);
+
+      if (d.cells === 0) methodInput.value = `Личный разговор на клетке (${me.x}, ${me.y})`;
+      else if (isCloseVoiceRange) methodInput.value = `Разговор вслух с расстояния ${d.formatted}`;
+      else {
+        const isPreModern = worldState.worldClock.year < 1880;
+        methodInput.value = isPreModern
+          ? `Связь на расстоянии ${d.formatted} (гонец / письмо / магия по сеттингу)`
+          : `Дистанционная связь на расстоянии ${d.formatted} (согласно эпохе ${worldState.worldClock.year} г.)`;
+      }
+      if (!reasonInput.value.trim()) reasonInput.value = `Личное обращение ${me.name} к ${target.name}`;
+    }
+
+    async function sendLiveTalkToAI() {
+      const me = getPossessedChar();
+      if (!me) return;
+      const targetId = document.getElementById("talk-target-select").value;
+      const target = worldState.objects.find((o) => o.id === targetId);
+      if (!target) return;
+
+      const method = document.getElementById("talk-method-input").value.trim() || "Личный разговор";
+      const reason = document.getElementById("talk-reason-input").value.trim() || "Беседа";
+      const myText = document.getElementById("talk-message-input").value.trim();
+      if (!myText) return alert("Напиши свою реплику!");
+
+      pushUndoSnapshot();
+      const btn = document.getElementById("btn-send-talk");
+      btn.disabled = true;
+      const d = calculateRealDistance(me.x, me.y, target.x, target.y);
+
+      const systemPrompt = `Ты — ИИ-мастер ролевых диалогов в мире Sandbox AI.
+Сеттинг мира: "${worldState.worldName}" — ${worldState.worldDescription}.
+${getTimeAndEraRulesBlock()}
+${getCustomAIRulesBlock()}
+Игрок в теле "${me.name}" (фракция: ${me.faction || "нет"}, статусы: ${JSON.stringify(me.customStats)}, отношения: ${JSON.stringify(me.relationships)}) обращается к "${target.name}" (фракция: ${target.faction || "нет"}, описание: ${target.description}, статусы: ${JSON.stringify(target.customStats)}, отношения: ${JSON.stringify(target.relationships)}).
+Способ связи: "${method}". Причина: "${reason}".
+
+Отыграй ответ "${target.name}" и обнови их взаимные отношения!
+Верни ответ СТРОГО в JSON:
+{
+  "npc_reply": "Прямая речь и действия в ответ от ${target.name}",
+  "npc_new_status": "Новое занятие ${target.name}",
+  "relationship_target_to_player": "Как теперь ${target.name} относится к ${me.name}",
+  "relationship_player_to_target": "Как этот разговор отразился на отношении ${me.name} к ${target.name}",
+  "chronicle_note": "Заметка в летопись"
+}`;
+
+      try {
+        const aiData = await callOpenRouterJSON(systemPrompt, JSON.stringify({ speaker: me.name, listener: target.name, distance: d.formatted, method, reason, playerMessage: myText }), `${target.name} отвечает...`);
+        const replyText = aiData.npc_reply || "...";
+        if (aiData.npc_new_status) target.status = aiData.npc_new_status;
+        if (!target.relationships) target.relationships = {};
+        if (!me.relationships) me.relationships = {};
+        if (aiData.relationship_target_to_player) target.relationships[me.name] = aiData.relationship_target_to_player;
+        if (aiData.relationship_player_to_target) me.relationships[target.name] = aiData.relationship_player_to_target;
+
+        worldState.lastTurnMarkers.push({ x: target.x, y: target.y, icon: "💬" });
+        worldState.dialogs.push({
+          id: "dlg_" + Date.now(),
+          turnInfo: `Ход ${worldState.turn} | 🕒 ${formatWorldClock()}`,
+          participants: [me.name, target.name],
+          method, reason,
+          messages: [{ speaker: me.name, text: myText }, { speaker: target.name, text: replyText }]
+        });
+
+        if (aiData.chronicle_note) {
+          worldState.chronicle.push({
+            id: "chr_" + Date.now(),
+            turnInfo: `Ход ${worldState.turn} (Диалог)`,
+            timeInfo: `🕒 ${formatWorldClock()}`,
+            playerPrompt: `${me.name} → ${target.name}: «${myText}»`,
+            text: aiData.chronicle_note
+          });
+        }
+
+        saveToLocalStorage();
+        closeModal("talk-modal");
+        renderAllTabs();
+        drawMap();
+        switchTab("dialogs");
+      } catch (err) {
+        alert("Ошибка диалога: " + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function continueExistingDialog(dialogId) {
+      const me = getPossessedChar();
+      if (!me) return alert("Вселись в персонажа (кнопка «🕹️»), чтобы отвечать в диалогах!");
+      const dlg = worldState.dialogs.find((d) => d.id === dialogId);
+      if (!dlg) return;
+
+      const inputEl = document.getElementById(`reply-input-${dialogId}`);
+      const myText = inputEl ? inputEl.value.trim() : "";
+      if (!myText) return alert("Введи текст реплики!");
+
+      const otherName = (dlg.participants || []).find((p) => p.toLowerCase() !== me.name.toLowerCase()) || dlg.participants[0] || "Собеседник";
+      const targetObj = worldState.objects.find((o) => o.type === "character" && o.name.toLowerCase() === otherName.toLowerCase());
+
+      pushUndoSnapshot();
+      if (!dlg.participants.includes(me.name)) dlg.participants.push(me.name);
+      dlg.messages.push({ speaker: me.name, text: myText });
+      if (inputEl) inputEl.value = "";
+      renderDialogs();
+
+      const systemPrompt = `Ты — ИИ-мастер ролевых диалогов в мире Sandbox AI.
+Сеттинг мира: "${worldState.worldName}" — ${worldState.worldDescription}.
+${getTimeAndEraRulesBlock()}
+${getCustomAIRulesBlock()}
+Игрок в теле "${me.name}" продолжает диалог с "${otherName}".
+История диалога: ${JSON.stringify(dlg.messages)}.
+Данные "${otherName}": ${targetObj ? JSON.stringify({ description: targetObj.description, status: targetObj.status, customStats: targetObj.customStats, relationships: targetObj.relationships }) : "NPC"}.
+Верни ответ СТРОГО в JSON:
+{
+  "npc_reply": "Ответная реплика и действия ${otherName}",
+  "npc_new_status": "Обновлённое занятие ${otherName}",
+  "relationship_target_to_player": "Обновлённое отношение ${otherName} к ${me.name}"
+}`;
+
+      try {
+        const aiData = await callOpenRouterJSON(systemPrompt, JSON.stringify({ playerMessage: myText }), `${otherName} отвечает...`);
+        dlg.messages.push({ speaker: otherName, text: aiData.npc_reply || "..." });
+        if (targetObj) {
+          if (aiData.npc_new_status) targetObj.status = aiData.npc_new_status;
+          if (!targetObj.relationships) targetObj.relationships = {};
+          if (aiData.relationship_target_to_player) targetObj.relationships[me.name] = aiData.relationship_target_to_player;
+        }
+        saveToLocalStorage();
+        renderAllTabs();
+      } catch (err) {
+        alert("Ошибка ответа: " + err.message);
+      }
+    }
+
+    /********************************************************************
+     * 6. ИНСПЕКТОР КЛЕТКИ, ВКЛАДКИ И ПРОМПТЫ СИМУЛЯЦИИ
+     ********************************************************************/
+    function selectCellForInspector(x, y) {
+      ensureGridAndScale();
+      activeCell = { x: clampX(x), y: clampY(y) };
+      document.getElementById("quick-obj-coords").textContent = `(${activeCell.x}, ${activeCell.y})`;
+      renderCellInspector();
+      drawMap();
+    }
+
+    function renderCellInspector() {
+      ensureGridAndScale();
+      const container = document.getElementById("cell-inspector-content");
+      if (!activeCell) return;
+      const { x, y } = activeCell;
+      const cellData = worldState.cells[`${x},${y}`];
+      const objs = worldState.objects.filter((o) => !o.isDead && o.x === x && o.y === y);
+      const scaleLabel = `${worldState.cellScaleValue}×${worldState.cellScaleValue} ${worldState.cellScaleUnit}`;
+      const facColor = cellData ? getFactionColor(cellData.faction) : null;
+
+      let html = `
+        <div class="card" style="${facColor ? `border-left: 4px solid ${facColor};` : ''}">
+          <div class="card-header">
+            <div class="card-title">📍 Клетка (${x}, ${y}) — ${escapeHtml(scaleLabel)}</div>
+            ${cellData ? `<span class="tag" style="background:${cellData.color}; color:#fff;">Местность</span>` : `<span class="tag">Пусто</span>`}
+          </div>
+          <div style="font-weight:600; font-size:13.5px;">${cellData ? escapeHtml(cellData.name) : "Незаполненная территория"}</div>
+          ${cellData && cellData.faction ? `<div style="font-size:11.5px; color:#c084fc;">🚩 Территория фракции: <b>${escapeHtml(cellData.faction)}</b></div>` : ""}
+          <div class="card-desc">${cellData ? escapeHtml(cellData.description) : "На этой клетке пока нет описания местности."}</div>
+        </div>
+        <h4 style="font-size:11.5px; text-transform:uppercase; color:var(--text-muted); margin: 8px 0 4px;">Объекты и персонажи на клетке (${objs.length})</h4>
+      `;
+
+      if (objs.length === 0) {
+        html += `<div class="empty-state" style="padding:14px;">На этой клетке пусто.</div>`;
+      } else {
+        for (const obj of objs) {
+          if (obj.type === "character") {
+            html += renderCharacterCardHtml(obj);
+          } else {
+            const typeLabels = { settlement: "Поселение", building: "Постройка", item: "Предмет", other: "Объект / Останки" };
+            const objFacColor = getFactionColor(obj.faction);
+            html += `
+              <div class="card" style="margin-bottom:6px; ${objFacColor ? `border-left: 4px solid ${objFacColor};` : ''}">
+                <div class="card-header">
+                  <div class="card-title">
+                    <span style="font-size:18px;">${escapeHtml(obj.emoji || "🔹")}</span>
+                    <span>${escapeHtml(obj.name)}</span>
+                    ${obj.faction ? `<span class="tag">🚩 ${escapeHtml(obj.faction)}</span>` : ""}
+                  </div>
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <span class="tag">${typeLabels[obj.type] || "Объект"}</span>
+                    <button class="danger" style="padding:2px 5px; font-size:10.5px;" onclick="deleteObject('${escapeJs(obj.id)}')">✖</button>
+                  </div>
+                </div>
+                ${obj.status ? `<div style="font-size:11.5px; color:#60a5fa;">Статус: ${escapeHtml(obj.status)}</div>` : ""}
+                <div class="card-desc">${escapeHtml(obj.description || "")}</div>
+              </div>
+            `;
+          }
+        }
+      }
+      container.innerHTML = html;
+    }
+
+    function applyPaintLocally() {
+      const targetKeys = getTargetCellsForPaint();
+      if (targetKeys.length === 0) return alert("Выдели хотя бы одну клетку!");
+      pushUndoSnapshot();
+      const color = document.getElementById("paint-color").value;
+      const name = document.getElementById("paint-name").value.trim() || "Изменённая местность";
+      const desc = document.getElementById("paint-desc").value.trim() || "Территория, размеченная игроком.";
+      const faction = document.getElementById("paint-faction-select").value.trim();
+
+      targetKeys.forEach((key) => {
+        const [x, y] = key.split(",").map(Number);
+        if (x >= 0 && x < worldState.gridWidth && y >= 0 && y < worldState.gridHeight) {
+          worldState.cells[key] = { x, y, name, color, faction, description: desc };
+        }
+      });
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function getTargetCellsForPaint() {
+      if (selectedCells.size > 0) return Array.from(selectedCells);
+      if (activeCell) return [`${activeCell.x},${activeCell.y}`];
+      return [];
+    }
+
+    function addManualObject() {
+      if (!activeCell) return alert("Выбери клетку на карте!");
+      const emoji = document.getElementById("obj-emoji").value.trim() || "🔹";
+      const name = document.getElementById("obj-name").value.trim();
+      const type = document.getElementById("obj-type").value;
+      const faction = document.getElementById("obj-faction-select").value.trim();
+      const desc = document.getElementById("obj-desc").value.trim();
+      if (!name) return alert("Укажи название или имя объекта!");
+
+      pushUndoSnapshot();
+      const newObj = {
+        id: "obj_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        name, type, emoji, faction, x: activeCell.x, y: activeCell.y,
+        status: "Создан игроком",
+        description: desc || "Объект создан игроком."
+      };
+      if (type === "character") ensureCharacterFields(newObj);
+      worldState.objects.push(newObj);
+      if (type === "item") registerCatalogItem({ name, emoji, category: "Создано игроком", description: desc || "Предмет на карте." });
+
+      document.getElementById("obj-name").value = "";
+      document.getElementById("obj-desc").value = "";
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function deleteObject(id) {
+      pushUndoSnapshot();
+      if (worldState.possessedCharId === id) worldState.possessedCharId = null;
+      worldState.objects = worldState.objects.filter((o) => o.id !== id);
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+      const btnIndex = { cell: 0, chars: 1, factions: 2, chronicle: 3, dialogs: 4, items: 5 }[tabName];
+      document.querySelectorAll(".tab-btn")[btnIndex].classList.add("active");
+      document.getElementById(`tab-${tabName}`).classList.add("active");
+    }
+
+    function renderAllTabs() {
+      ensureGridAndScale();
+      ensureWorldClock();
+      syncAllCharactersWithGlobalStats();
+      updatePossessionUI();
+      updateUndoButtonUI();
+      document.getElementById("ui-world-name").textContent = worldState.worldName;
+      document.getElementById("ui-grid-badge").textContent = getGridAndScaleBadgeText();
+      document.getElementById("ui-turn-count").textContent = worldState.turn;
+      document.getElementById("ui-world-time").textContent = formatWorldClock();
+      document.getElementById("ui-weather-badge").textContent = worldState.weather || "☀️ Ясно";
+      document.getElementById("sim-autonomy-level").value = worldState.autonomyLevel || "medium";
+      updateHud(hoverCell);
+      renderCellInspector();
+      renderCharactersTab();
+      renderFactionsTab();
+      renderChronicle();
+      renderDialogs();
+      renderItems();
+    }
+
+    function renderChronicle() {
+      const el = document.getElementById("chronicle-list");
+      if (worldState.chronicle.length === 0) {
+        el.innerHTML = `<div class="empty-state">Летопись пуста. Выбери пресет мира («📦 Пресеты миров») или запусти симуляцию!</div>`;
+        return;
+      }
+      el.innerHTML = worldState.chronicle.slice().reverse().map((entry) => `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📜 ${escapeHtml(entry.turnInfo)}</div>
+            <span class="tag">${escapeHtml(entry.timeInfo || "")}</span>
+          </div>
+          ${entry.playerPrompt ? `<div style="font-size:11.5px; color:#c084fc; background:rgba(139,92,246,0.12); padding:5px 7px; border-radius:4px;"><b>Событие:</b> ${escapeHtml(entry.playerPrompt)}</div>` : ""}
+          <div class="card-desc">${escapeHtml(entry.text)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderDialogs() {
+      const topActions = document.getElementById("dialogs-top-actions");
+      const possessed = getPossessedChar();
+      topActions.innerHTML = possessed
+        ? `<div class="card" style="border-color:var(--possess); background:rgba(16,185,129,0.08);"><div style="display:flex; justify-content:space-between; align-items:center;"><div style="font-size:12px;">🕹️ Вы: <b>${escapeHtml(possessed.name)}</b></div><button class="possess-btn active" onclick="openLiveTalkModal()">💬 Новый диалог</button></div></div>`
+        : `<div class="small-hint">💡 Вселись в персонажа во вкладке «👥 Герои», чтобы лично вести беседы!</div>`;
+
+      const el = document.getElementById("dialogs-list");
+      if (worldState.dialogs.length === 0) {
+        el.innerHTML = `<div class="empty-state">Диалогов пока не было.</div>`;
+        return;
+      }
+      el.innerHTML = worldState.dialogs.slice().reverse().map((d) => `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💬 ${(d.participants || []).map(escapeHtml).join(" ↔ ")}</div>
+            <span class="tag">${escapeHtml(d.turnInfo || "")}</span>
+          </div>
+          <div style="font-size:11.5px; color:#38bdf8;"><b>Связь:</b> ${escapeHtml(d.method || "Личный разговор")}</div>
+          <div style="font-size:11.5px; color:#fbbf24;"><b>Причина:</b> ${escapeHtml(d.reason || "Общение")}</div>
+          <div style="display:flex; flex-direction:column; gap:5px; margin-top:4px;">
+            ${(d.messages || []).map((m) => {
+              const isMine = possessed && m.speaker && m.speaker.toLowerCase() === possessed.name.toLowerCase();
+              return `<div class="dialog-msg ${isMine ? 'mine' : ''}"><strong>${escapeHtml(m.speaker)}:</strong> ${escapeHtml(m.text)}</div>`;
+            }).join("")}
+          </div>
+          ${possessed ? `
+            <div style="display:flex; gap:5px; margin-top:5px;">
+              <input type="text" id="reply-input-${escapeHtml(d.id)}" placeholder="Ответить от лица ${escapeHtml(possessed.name)}..." onkeydown="if(event.key==='Enter') continueExistingDialog('${escapeJs(d.id)}')" />
+              <button class="possess-btn active" onclick="continueExistingDialog('${escapeJs(d.id)}')">Ответить</button>
+            </div>
+          ` : ""}
+        </div>
+      `).join("");
+    }
+
+    function renderItems() {
+      const el = document.getElementById("items-list");
+      if (worldState.items.length === 0) {
+        el.innerHTML = `<div class="empty-state">Каталог предметов и ресурсов пуст.</div>`;
+        return;
+      }
+      el.innerHTML = worldState.items.slice().reverse().map((item) => `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span style="font-size:17px;">${escapeHtml(item.emoji || "📦")}</span> ${escapeHtml(item.name)}</div>
+            <span class="tag">${escapeHtml(item.category || "Предмет")}</span>
+          </div>
+          <div class="card-desc">${escapeHtml(item.description)}</div>
+        </div>
+      `).join("");
+    }
+
+    function registerCatalogItem(item) {
+      if (!item || !item.name) return;
+      const exists = worldState.items.find((i) => i.name.toLowerCase() === item.name.toLowerCase());
+      if (exists) {
+        exists.description = item.description || exists.description;
+        exists.emoji = item.emoji || exists.emoji;
+      } else {
+        worldState.items.push({
+          id: "item_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+          name: item.name, emoji: item.emoji || "📦",
+          category: item.category || "Предмет / Ресурс",
+          description: item.description || "Уникальный предмет мира."
+        });
+      }
+    }
+
+    /********************************************************************
+     * 7. ВЗАИМОДЕЙСТВИЕ С OPENROUTER И ПРИМЕНЕНИЕ ОТВЕТА ИИ
+     ********************************************************************/
+    function getScaleRulesBlockForAI() {
+      ensureGridAndScale();
+      const w = worldState.gridWidth, h = worldState.gridHeight;
+      const val = worldState.cellScaleValue, unit = worldState.cellScaleUnit;
+      return `РАЗМЕР КАРТЫ И МАСШТАБ: Сетка ${w}×${h} (X от 0 до ${w - 1}, Y от 0 до ${h - 1}), 1 клетка = ${val} ${unit}.`;
+    }
+
+    function getTimeAndEraRulesBlock() {
+      ensureWorldClock();
+      return `
+${getScaleRulesBlockForAI()}
+ТЕКУЩЕЕ ВРЕМЯ (ГГ:ММ:ДД:ЧЧ) И ПОГОДА: ${formatWorldClockDetailed()}.
+СТРОГИЙ КОНТРОЛЬ ЭПОХИ (${worldState.worldClock.year} ГОД):
+Все постройки, оружие, одежда, предметы и способы связи ДОЛЖНЫ на 100% соответствовать ${worldState.worldClock.year} году и сеттингу ("${worldState.worldName}"). Никакого современного оружия или телефонов в древних эпохах/Средневековье!`;
+    }
+
+    function getCustomAIRulesBlock() {
+      const rules = (worldState.aiRules || "").trim();
+      return rules ? `\nДИРЕКТИВЫ ИГРОКА (ВЫСШИЙ ПРИОРИТЕТ):\n"""\n${rules}\n"""\n` : "";
+    }
+
+    function getCharacterRulesPromptBlock() {
+      const statsDesc = worldState.globalCharStats
+        .map((s) => `- "${s.name}" [${s.isStatic ? "СТАТИЧНЫЙ — НЕ МЕНЯТЬ у существующих!" : "ИЗМЕНЯЕМЫЙ"}]: ${s.hint || "по смыслу"}`)
+        .join("\n");
+
+      return `ПРАВИЛА ПЕРСОНАЖЕЙ, ОТНОШЕНИЙ, ФРАКЦИЙ И СМЕРТИ:
+1. "description" существующего персонажа СТАТИЧНО — не переписывай его! Текущее занятие пиши в "status".
+2. В "customStats" используй ТОЛЬКО эти ключи:\n${statsDesc}
+3. ОТНОШЕНИЯ ("relationships"): у персонажей обновляй объект "relationships": { "ИмяДругогоПерсонажа": "Краткое отношение и причина" } после диалогов, союзов или конфликтов!
+4. СМЕРТЬ И НАСЛЕДИЕ: если персонаж погибает в бою или от катастрофы, укажи ему "action": "kill" и в "status" напиши причину гибели — игра сама создаст его могилу с инвентарём и перенесёт его в архив Павших.`;
+    }
+
+    function getAutonomousWorldGrowthBlock(turnsToSim) {
+      const level = worldState.autonomyLevel || "medium";
+      const anchors = worldState.objects.filter((o) => !o.isDead).slice(0, 15).map((o) => `${o.name} (${o.type}, фракция: ${o.faction || "нет"}) на (${o.x},${o.y})`);
+      const anchorsHint = anchors.length > 0 ? `Точки активности: ${anchors.join("; ")}.` : `Начни жизнь около центра (${Math.floor(worldState.gridWidth / 2)}, ${Math.floor(worldState.gridHeight / 2)}).`;
+
+      if (level === "low") return `АВТО-ЖИЗНЬ (СПОКОЙНАЯ): ${anchorsHint} Персонажи перемещаются, общаются и занимаются делами.`;
+      if (level === "high") return `АВТО-ЖИЗНЬ (БУРНАЯ ЭКСПАНСИЯ — ОБЯЗАТЕЛЬНО!): ${anchorsHint} Обязательно построй 2–3 новых здания/поселения, освой 2–4 новые клетки для фракций, добавь 1–2 новых персонажей, обнови отношения и создай 1–2 диалога!`;
+      return `АВТО-ЖИЗНЬ (АКТИВНАЯ — ОБЯЗАТЕЛЬНО!): ${anchorsHint} Даже без приказов игрока развивай города и фракции: построй 1–2 новых объекта (type: "building" или "settlement"), освой 1–2 клетки в "cell_updates", введи 1 нового персонажа (type: "character"), обнови "relationships" и создай 1–2 диалога!`;
+    }
+
+    function buildWorldSnapshotForAI() {
+      ensureGridAndScale();
+      const possessed = getPossessedChar();
+      return {
+        worldName: worldState.worldName,
+        worldSetting: worldState.worldDescription,
+        currentTime: formatWorldClockDetailed(),
+        weather: worldState.weather,
+        factions: worldState.factions,
+        possessedCharacterByPlayer: possessed ? { id: possessed.id, name: possessed.name, x: possessed.x, y: possessed.y } : null,
+        activeTerrainCells: Object.values(worldState.cells).slice(0, 350),
+        livingObjectsOnMap: worldState.objects.filter((o) => !o.isDead),
+        recentChronicle: worldState.chronicle.slice(-3).map((c) => c.text)
+      };
+    }
+
+    async function callOpenRouterJSON(systemPrompt, userPrompt, statusText) {
+      if (apiConfig.mode !== "gas" && !apiConfig.apiKey) {
+        openModal("api-modal");
+        throw new Error("Укажи API-ключ OpenRouter в настройках!");
+      }
+      const loader = document.getElementById("ai-loader");
+      loader.style.display = "flex";
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        document.getElementById("ai-loader-text").textContent = attempt === 1 ? (statusText || "ИИ обрабатывает мир...") : "Авто-исправление формата ответа ИИ...";
+        const requestBody = {
+          model: apiConfig.model,
+          messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+          temperature: attempt === 1 ? 0.75 : 0.45
+        };
+
+        try {
+          let response;
+          if (apiConfig.mode === "gas") {
+            response = await fetch(apiConfig.endpoint || DEFAULT_GAS_URL, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify({ apiKey: apiConfig.apiKey, body: requestBody })
+            });
+          } else {
+            const baseUrl = (apiConfig.mode === "custom" && apiConfig.endpoint) ? apiConfig.endpoint.trim().replace(/\/+$/, "") : "https://openrouter.ai/api/v1";
+            response = await fetch(`${baseUrl}/chat/completions`, {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${apiConfig.apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify(requestBody)
+            });
+          }
+          const data = await response.json();
+          if (!response.ok || data.error) throw new Error(data.error?.message || `Ошибка HTTP ${response.status}`);
+          const rawContent = data.choices?.[0]?.message?.content || "";
+          loader.style.display = "none";
+          return parseAIJson(rawContent);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      loader.style.display = "none";
+      throw lastError;
+    }
+
+    function parseAIJson(raw) {
+      let cleaned = String(raw || "").trim();
+      const fenceRegex = new RegExp("\\x60\\x60\\x60(?:json)?\\s*([\\s\\S]*?)\\x60\\x60\\x60", "i");
+      const match = cleaned.match(fenceRegex);
+      if (match) cleaned = match[1].trim();
+      const firstBrace = cleaned.indexOf("{"), lastBrace = cleaned.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1) cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+
+      try {
+        return JSON.parse(cleaned);
+      } catch (firstErr) {
+        const defaultMid = Math.floor((worldState.gridWidth || 50) / 2);
+        let repaired = cleaned
+          .replace(/\uFFFD/g, String(defaultMid))
+          .replace(/"(x|y)"\s*:\s*([^0-9\-"\s,\}\]]*)\s*([,\}])/gi, (_, axis, val, tail) => {
+            const num = parseInt(val);
+            return `"${axis}": ${isNaN(num) ? defaultMid : num}${tail}`;
+          })
+          .replace(/,\s*([\}\]])/g, "$1");
+        return JSON.parse(repaired);
+      }
+    }
+
+    function applyAIResponseToWorld(aiData, turnLabel, timeLabel, playerPromptText) {
+      ensureGridAndScale();
+      worldState.lastTurnMoves = [];
+      worldState.lastTurnMarkers = [];
+
+      if (aiData.weather_update && typeof aiData.weather_update === "string") {
+        worldState.weather = aiData.weather_update;
+      }
+
+      // 1. Обновление или создание фракций
+      if (Array.isArray(aiData.faction_updates)) {
+        for (const fu of aiData.faction_updates) {
+          if (!fu || !fu.name) continue;
+          const existingFac = worldState.factions.find((f) => f.name.toLowerCase() === fu.name.toLowerCase());
+          if (existingFac) {
+            if (fu.diplomacy) existingFac.diplomacy = fu.diplomacy;
+            if (fu.description) existingFac.description = fu.description;
+            if (fu.color) existingFac.color = fu.color;
+          } else {
+            worldState.factions.push({
+              id: "fac_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+              name: fu.name,
+              color: fu.color || "#8b5cf6",
+              diplomacy: fu.diplomacy || "Активна",
+              description: fu.description || "Фракция мира."
+            });
+          }
+        }
+      }
+
+      // 2. Обновление клеток карты
+      if (Array.isArray(aiData.cell_updates)) {
+        for (const c of aiData.cell_updates) {
+          const x = clampX(c.x), y = clampY(c.y);
+          const key = `${x},${y}`;
+          worldState.cells[key] = {
+            x, y,
+            name: c.name || c.terrain_name || "Территория",
+            color: c.color || worldState.cells[key]?.color || "#3b82f6",
+            faction: c.faction ?? worldState.cells[key]?.faction ?? "",
+            description: c.description || ""
+          };
+        }
+      }
+
+      // 3. Действия с объектами и персонажами (включая стрелки перемещений, отношения и могилы павших)
+      if (Array.isArray(aiData.object_actions)) {
+        for (const act of aiData.object_actions) {
+          const actionType = (act.action || "create_or_update").toLowerCase();
+          let existing = act.id ? worldState.objects.find((o) => o.id === act.id) : null;
+          if (!existing && act.name) {
+            existing = worldState.objects.find((o) => o.name.toLowerCase() === act.name.toLowerCase() && !o.isDead);
+          }
+
+          if (actionType === "kill" || actionType === "die" || (existing && existing.type === "character" && (actionType === "delete" || actionType === "remove"))) {
+            if (existing && existing.type === "character") {
+              markCharacterDeadAndSpawnGrave(existing, act.status || act.description || "Погиб в событиях мира");
+              worldState.lastTurnMarkers.push({ x: existing.x, y: existing.y, icon: "💀" });
+            }
+            continue;
+          }
+
+          if (actionType === "delete" || actionType === "remove") {
+            if (existing) worldState.objects = worldState.objects.filter((o) => o !== existing);
+            continue;
+          }
+
+          const x = clampX(act.x ?? existing?.x ?? Math.floor(worldState.gridWidth / 2));
+          const y = clampY(act.y ?? existing?.y ?? Math.floor(worldState.gridHeight / 2));
+
+          if (existing) {
+            if (existing.x !== x || existing.y !== y) {
+              worldState.lastTurnMoves.push({ fromX: existing.x, fromY: existing.y, toX: x, toY: y, name: existing.name });
+            }
+            existing.x = x;
+            existing.y = y;
+            existing.status = act.status || existing.status;
+            if (act.faction !== undefined) existing.faction = act.faction;
+
+            if (existing.type === "character") {
+              ensureCharacterFields(existing);
+              if (act.customStats && typeof act.customStats === "object") {
+                for (const [rawKey, v] of Object.entries(act.customStats)) {
+                  const parsed = parseStatLabel(rawKey);
+                  const allowedKey = Object.keys(existing.customStats).find((k) => k.toLowerCase() === parsed.name.toLowerCase());
+                  if (!allowedKey) continue;
+                  if (isStatLockedForChar(existing, allowedKey) && !isPlaceholderStatValue(existing.customStats[allowedKey])) continue;
+                  existing.customStats[allowedKey] = String(v);
+                }
+              }
+              if (act.relationships && typeof act.relationships === "object") {
+                Object.assign(existing.relationships, act.relationships);
+              }
+            }
+          } else {
+            const newObj = {
+              id: act.id || "obj_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
+              name: act.name || "Новый объект",
+              type: act.type || "other",
+              emoji: act.emoji || "🔹",
+              faction: act.faction || "",
+              isDead: false,
+              x, y,
+              status: act.status || "Активен",
+              description: act.description || ""
+            };
+            if (newObj.type === "character") {
+              newObj.customStats = {};
+              newObj.personalStatLocks = {};
+              newObj.relationships = (act.relationships && typeof act.relationships === "object") ? act.relationships : {};
+              ensureCharacterFields(newObj);
+              if (act.customStats && typeof act.customStats === "object") {
+                for (const [rawKey, v] of Object.entries(act.customStats)) {
+                  const parsed = parseStatLabel(rawKey);
+                  const allowedGlobal = worldState.globalCharStats.find((gs) => gs.name.toLowerCase() === parsed.name.toLowerCase());
+                  if (allowedGlobal) newObj.customStats[allowedGlobal.name] = String(v);
+                }
+              }
+            } else if (newObj.type === "building" || newObj.type === "settlement") {
+              worldState.lastTurnMarkers.push({ x, y, icon: "🏗️" });
+            }
+            worldState.objects.push(newObj);
+          }
+        }
+      }
+
+      if (Array.isArray(aiData.new_items)) {
+        for (const item of aiData.new_items) registerCatalogItem(item);
+      }
+
+      if (Array.isArray(aiData.dialogs)) {
+        for (const d of aiData.dialogs) {
+          if (Array.isArray(d.messages) && d.messages.length > 0) {
+            worldState.dialogs.push({
+              id: "dlg_" + Date.now() + "_" + Math.floor(Math.random() * 10000),
+              turnInfo: `${turnLabel} | ${timeLabel}`,
+              participants: d.participants || [],
+              method: d.method || "Личный разговор",
+              reason: d.reason || "События в мире",
+              messages: d.messages
+            });
+            const speakerObj = worldState.objects.find((o) => !o.isDead && (d.participants || []).some((p) => p.toLowerCase() === o.name.toLowerCase()));
+            if (speakerObj) worldState.lastTurnMarkers.push({ x: speakerObj.x, y: speakerObj.y, icon: "💬" });
+          }
+        }
+      }
+
+      if (aiData.chronicle) {
+        worldState.chronicle.push({
+          id: "chr_" + Date.now(),
+          turnInfo: turnLabel,
+          timeInfo: timeLabel,
+          playerPrompt: playerPromptText || "",
+          text: aiData.chronicle
+        });
+      }
+
+      saveToLocalStorage();
+      renderAllTabs();
+      drawMap();
+    }
+
+    async function fillAreaWithAI() {
+      ensureGridAndScale();
+      const targetKeys = getTargetCellsForPaint();
+      if (targetKeys.length === 0) return alert("Выдели область на карте!");
+      const color = document.getElementById("paint-color").value;
+      const name = document.getElementById("paint-name").value.trim() || "Новый регион";
+      const desc = document.getElementById("paint-desc").value.trim();
+      const faction = document.getElementById("paint-faction-select").value.trim();
+      if (!desc) return alert("Напиши описание местности!");
+
+      pushUndoSnapshot();
+      const coordsList = targetKeys.map((k) => {
+        const [x, y] = k.split(",").map(Number);
+        worldState.cells[k] = { x, y, name, color, faction, description: desc };
+        return { x, y };
+      });
+      drawMap();
+
+      const sampleCoord = coordsList[0] || { x: 0, y: 0 };
+      const allowedKeysExample = {};
+      worldState.globalCharStats.forEach((gs) => { allowedKeysExample[gs.name] = "значение"; });
+
+      const systemPrompt = `Ты — ИИ-архитектор мира в браузерной песочнице Sandbox AI.
+Сеттинг мира: "${worldState.worldName}" — ${worldState.worldDescription}.
+${getTimeAndEraRulesBlock()}
+${getCustomAIRulesBlock()}
+Игрок выделил область "${name}" (фракция: "${faction || "нейтральная"}") с описанием: "${desc}".
+Заполни эти координаты подходящими постройками, персонажами и ресурсами.
+${getCharacterRulesPromptBlock()}
+Верни ответ СТРОГО в формате JSON:
+{
+  "chronicle": "Описание созданной местности.",
+  "cell_updates": [{ "x": ${sampleCoord.x}, "y": ${sampleCoord.y}, "name": "название", "color": "${color}", "faction": "${faction}", "description": "описание клетки" }],
+  "object_actions": [{
+    "action": "create_or_update",
+    "id": "unique_id",
+    "name": "Имя или название",
+    "type": "character | settlement | building | item | other",
+    "emoji": "эмодзи",
+    "faction": "${faction}",
+    "x": ${sampleCoord.x}, "y": ${sampleCoord.y},
+    "status": "чем занят",
+    "description": "Постоянная биография или описание постройки",
+    "customStats": ${JSON.stringify(allowedKeysExample)},
+    "relationships": { "ИмяЗнакомого": "Отношение" }
+  }],
+  "dialogs": [],
+  "new_items": []
+}`;
+
+      try {
+        document.getElementById("btn-ai-fill").disabled = true;
+        const aiData = await callOpenRouterJSON(systemPrompt, JSON.stringify({ regionName: name, regionDescription: desc, selectedCoordinates: coordsList.slice(0, 120), worldContext: buildWorldSnapshotForAI() }), "ИИ заполняет местность...");
+        applyAIResponseToWorld(aiData, `Заполнение «${name}»`, `🕒 ${formatWorldClock()}`, `Регион: ${name}`);
+        clearSelection();
+        switchTab("chronicle");
+      } catch (err) {
+        alert("Ошибка ИИ: " + err.message);
+      } finally {
+        document.getElementById("btn-ai-fill").disabled = false;
+      }
+    }
+
+    async function toggleAutoSimulation() {
+      const btn = document.getElementById("btn-auto-sim");
+      if (autoSimRunning) {
+        autoSimRunning = false;
+        btn.classList.remove("possess-btn", "active");
+        btn.textContent = "🔄 Авто-ход";
+        return;
+      }
+      autoSimRunning = true;
+      btn.classList.add("possess-btn", "active");
+      btn.textContent = "⏹️ Стоп";
+      while (autoSimRunning) {
+        const ok = await runSimulation(true);
+        if (!ok || !autoSimRunning) break;
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+      autoSimRunning = false;
+      btn.classList.remove("possess-btn", "active");
+      btn.textContent = "🔄 Авто-ход";
+    }
+
+    async function runSimulation(fromAutoLoop = false) {
+      ensureGridAndScale();
+      pushUndoSnapshot();
+
+      const turnsToSim = parseInt(document.getElementById("sim-turns").value) || 1;
+      const timeVal = parseInt(document.getElementById("sim-time-val").value) || 1;
+      const timeUnit = document.getElementById("sim-time-unit").value;
+      const playerCommand = document.getElementById("player-command").value.trim();
+      const possessed = getPossessedChar();
+
+      const timeBefore = formatWorldClock();
+      advanceWorldClock(turnsToSim, timeVal, timeUnit);
+      const timeAfter = formatWorldClock();
+      const startTurn = worldState.turn + 1;
+      const endTurn = worldState.turn + turnsToSim;
+      const turnLabel = turnsToSim === 1 ? `Ход ${endTurn}` : `Ходы ${startTurn}–${endTurn}`;
+
+      const midX = Math.floor(worldState.gridWidth / 2), midY = Math.floor(worldState.gridHeight / 2);
+      const allowedKeysExample = {};
+      worldState.globalCharStats.forEach((gs) => { allowedKeysExample[gs.name] = "значение"; });
+
+      const possessionRules = possessed
+        ? `РЕЖИМ ВОПЛОЩЕНИЯ ИГРОКА: Игрок в теле персонажа "${possessed.name}" (${possessed.x}, ${possessed.y}). ${playerCommand ? `Действие игрока: "${playerCommand}". Строго исполни его!` : `Игрок наблюдает за окружением.`}`
+        : `РЕЖИМ БОГА: ${playerCommand ? `Исполни событие игрока: "${playerCommand}".` : `Игрок не вмешивается — самостоятельно развивай фракции, города, строй здания и создавай события!`}`;
+
+      const systemPrompt = `Ты — ИИ-мастер симуляции живого мира в игре Sandbox AI.
+Сеттинг мира: "${worldState.worldName}" — ${worldState.worldDescription}.
+${getTimeAndEraRulesBlock()}
+${getCustomAIRulesBlock()}
+${getAutonomousWorldGrowthBlock(turnsToSim)}
+${possessionRules}
+${getCharacterRulesPromptBlock()}
+
+Верни ответ СТРОГО в формате JSON:
+{
+  "chronicle": "Подробная сводка всех событий за ${turnsToSim} ход(ов)...",
+  "weather_update": "${worldState.weather}",
+  "faction_updates": [{ "name": "НазваниеФракции", "color": "#HEX", "diplomacy": "Статус дипломатии", "description": "Описание" }],
+  "cell_updates": [{ "x": ${midX}, "y": ${midY}, "name": "Название", "color": "#HEX", "faction": "НазваниеФракцииИлиПусто", "description": "Описание" }],
+  "object_actions": [{
+    "action": "create_or_update | kill | delete",
+    "id": "id_объекта",
+    "name": "Имя",
+    "type": "character | settlement | building | item | other",
+    "emoji": "эмодзи",
+    "faction": "Фракция",
+    "x": ${midX}, "y": ${midY},
+    "status": "Текущее действие (или причина гибели для action=kill)",
+    "description": "Постоянное описание (для новых объектов/персонажей)",
+    "customStats": ${JSON.stringify(allowedKeysExample)},
+    "relationships": { "ИмяДругогоПерсонажа": "Как изменилось отношение" }
+  }],
+  "dialogs": [{
+    "participants": ["Имя 1", "Имя 2"],
+    "method": "Способ связи строго по эпохе",
+    "reason": "Причина разговора",
+    "messages": [{ "speaker": "Имя 1", "text": "Реплика" }, { "speaker": "Имя 2", "text": "Ответ" }]
+  }],
+  "new_items": [{ "name": "Название", "emoji": "📦", "category": "Категория", "description": "Уникальное описание" }]
+}`;
+
+      const promptLabel = possessed
+        ? `[От лица ${possessed.name}]: ${playerCommand || "Наблюдает за миром"}`
+        : (playerCommand || "🌱 Автономная жизнь мира");
+
+      try {
+        document.getElementById("btn-simulate").disabled = true;
+        const aiData = await callOpenRouterJSON(systemPrompt, JSON.stringify({ turns: turnsToSim, timeBefore, timeAfter, playerInput: playerCommand || "Развивай мир автономно!", currentWorldState: buildWorldSnapshotForAI() }), `Живой мир: ${turnLabel} (🕒 ${timeAfter})...`);
+        worldState.turn = endTurn;
+        applyAIResponseToWorld(aiData, turnLabel, `🕒 ${timeAfter}`, promptLabel);
+        document.getElementById("player-command").value = "";
+        const updatedPossessed = getPossessedChar();
+        if (updatedPossessed) focusMapOnCell(updatedPossessed.x, updatedPossessed.y);
+        if (!fromAutoLoop) switchTab("chronicle");
+        return true;
+      } catch (err) {
+        alert("Ошибка симуляции: " + err.message);
+        return false;
+      } finally {
+        document.getElementById("btn-simulate").disabled = false;
+      }
+    }
+
+    async function generateCharDetailsWithAI() {
+      const name = document.getElementById("char-edit-name").value.trim() || "Случайный герой";
+      const desc = document.getElementById("char-edit-desc").value.trim();
+      const btn = document.getElementById("btn-ai-gen-char");
+      const requestedStats = [];
+      document.querySelectorAll("#char-modal-stats-container .char-stat-row").forEach((row) => {
+        const parsed = parseStatLabel(row.querySelector(".stat-key-input").value);
+        if (parsed.name) requestedStats.push({ name: parsed.name, hint: parsed.hint });
+      });
+
+      const systemPrompt = `Ты — ИИ-генератор персонажей для Sandbox AI. Сеттинг: "${worldState.worldName}" (${worldState.worldClock.year} г.).
+Заполни анкету персонажа строго по эпохе и ТОЛЬКО со статусами из списка: ${JSON.stringify(requestedStats)}.
+Верни JSON: { "name": "Имя", "emoji": "🧍", "status": "Занятие", "description": "Биография", "customStats": { "Статус": "Значение" } }`;
+
+      try {
+        btn.disabled = true;
+        const data = await callOpenRouterJSON(systemPrompt, JSON.stringify({ name, desc }), "ИИ создаёт досье...");
+        if (!document.getElementById("char-edit-name").value.trim() && data.name) document.getElementById("char-edit-name").value = data.name;
+        if (data.emoji) document.getElementById("char-edit-emoji").value = data.emoji;
+        if (data.status) document.getElementById("char-edit-status").value = data.status;
+        if (!document.getElementById("char-edit-desc").value.trim() && data.description) document.getElementById("char-edit-desc").value = data.description;
+        if (data.customStats && typeof data.customStats === "object") {
+          document.querySelectorAll("#char-modal-stats-container .char-stat-row").forEach((r) => {
+            const parsed = parseStatLabel(r.querySelector(".stat-key-input").value);
+            const input = r.querySelector(".stat-val-input");
+            const matchEntry = Object.entries(data.customStats).find(([k]) => k.toLowerCase() === parsed.name.toLowerCase());
+            if (matchEntry && isPlaceholderStatValue(input.value)) input.value = String(matchEntry[1]);
+          });
+        }
+      } catch (e) {
+        alert("Ошибка: " + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    /********************************************************************
+     * 8. НАСТРОЙКИ, СОХРАНЕНИЕ И ЗАГРУЗКА
+     ********************************************************************/
+    function onApiModeChange() {
+      const mode = document.getElementById("api-mode-select").value;
+      const box = document.getElementById("api-endpoint-box");
+      const input = document.getElementById("api-endpoint-input");
+      box.style.display = mode === "direct" ? "none" : "block";
+      if (mode === "gas" && !input.value.trim()) input.value = DEFAULT_GAS_URL;
+    }
+
+    async function fetchOpenRouterModels() {
+      const btn = document.getElementById("btn-fetch-models");
+      btn.disabled = true;
+      try {
+        const mode = document.getElementById("api-mode-select").value;
+        const endpoint = document.getElementById("api-endpoint-input").value.trim() || DEFAULT_GAS_URL;
+        const res = await fetch(mode === "gas" ? endpoint : "https://openrouter.ai/api/v1/models");
+        const data = await res.json();
+        if (data && Array.isArray(data.data)) {
+          allFetchedModels = data.data.map((m) => ({ id: m.id, name: `${m.name || m.id} (${m.id})` }));
+          filterModelSelect();
+          btn.textContent = `✅ Загружено (${allFetchedModels.length})`;
+        }
+      } catch (err) {
+        alert("Ошибка загрузки моделей: " + err.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function filterModelSelect() {
+      const q = document.getElementById("model-search").value.toLowerCase().trim();
+      const select = document.getElementById("api-model-select");
+      select.innerHTML = allFetchedModels
+        .filter((m) => m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q))
+        .slice(0, 250)
+        .map((m) => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`)
+        .join("");
+    }
+
+    function openModal(id) {
+      ensureGridAndScale();
+      ensureWorldClock();
+      if (id === "scale-modal") {
+        document.getElementById("scale-grid-w").value = worldState.gridWidth;
+        document.getElementById("scale-grid-h").value = worldState.gridHeight;
+        document.getElementById("scale-cell-val").value = worldState.cellScaleValue;
+        document.getElementById("scale-cell-unit").value = worldState.cellScaleUnit;
+      } else if (id === "time-modal") {
+        document.getElementById("clock-year-input").value = worldState.worldClock.year;
+        document.getElementById("clock-month-input").value = worldState.worldClock.month;
+        document.getElementById("clock-day-input").value = worldState.worldClock.day;
+        document.getElementById("clock-hour-input").value = worldState.worldClock.hour;
+        document.getElementById("clock-raw-string").value = formatWorldClock();
+        document.getElementById("clock-weather-select").value = worldState.weather || "☀️ Ясно";
+      } else if (id === "setting-modal") {
+        document.getElementById("setting-world-name").value = worldState.worldName;
+        document.getElementById("setting-world-desc").value = worldState.worldDescription;
+        document.getElementById("setting-ai-rules").value = worldState.aiRules || "";
+      } else if (id === "api-modal") {
+        document.getElementById("api-key-input").value = apiConfig.apiKey;
+        document.getElementById("api-model-custom").value = apiConfig.model;
+        document.getElementById("api-mode-select").value = apiConfig.mode || "gas";
+        document.getElementById("api-endpoint-input").value = apiConfig.endpoint || DEFAULT_GAS_URL;
+        onApiModeChange();
+      }
+      document.getElementById(id).classList.add("active");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("active");
+    }
+
+    function saveWorldSetting() {
+      worldState.worldName = document.getElementById("setting-world-name").value.trim() || "Новый мир";
+      worldState.worldDescription = document.getElementById("setting-world-desc").value.trim() || "Свободная песочница.";
+      worldState.aiRules = document.getElementById("setting-ai-rules").value.trim();
+      saveToLocalStorage();
+      renderAllTabs();
+      closeModal("setting-modal");
+    }
+
+    function saveApiSettings() {
+      apiConfig.apiKey = document.getElementById("api-key-input").value.trim();
+      apiConfig.model = document.getElementById("api-model-custom").value.trim() || "google/gemini-2.5-flash";
+      apiConfig.mode = document.getElementById("api-mode-select").value;
+      apiConfig.endpoint = document.getElementById("api-endpoint-input").value.trim() || DEFAULT_GAS_URL;
+      localStorage.setItem("sandbox_or_key", apiConfig.apiKey);
+      localStorage.setItem("sandbox_or_model", apiConfig.model);
+      localStorage.setItem("sandbox_or_mode", apiConfig.mode);
+      localStorage.setItem("sandbox_or_endpoint", apiConfig.endpoint);
+      closeModal("api-modal");
+    }
+
+    function saveToLocalStorage() {
+      try { localStorage.setItem("sandbox_ai_world_v1", JSON.stringify(worldState)); } catch (e) {}
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem("sandbox_ai_world_v1");
+        if (raw) {
+          worldState = Object.assign(worldState, JSON.parse(raw));
+          ensureGridAndScale();
+          ensureWorldClock();
+          syncAllCharactersWithGlobalStats();
+        }
+      } catch (e) {}
+    }
+
+    function exportWorld() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(worldState, null, 2));
+      const a = document.createElement("a");
+      a.setAttribute("href", dataStr);
+      a.setAttribute("download", `${worldState.worldName.replace(/\s+/g, "_")}_turn_${worldState.turn}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function importWorld(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          pushUndoSnapshot();
+          worldState = Object.assign(worldState, JSON.parse(e.target.result));
+          ensureGridAndScale();
+          ensureWorldClock();
+          syncAllCharactersWithGlobalStats();
+          saveToLocalStorage();
+          centerMap(true);
+          renderAllTabs();
+          drawMap();
+        } catch (err) {
+          alert("Ошибка чтения JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetWorld() {
+      if (!confirm("Точно очистить весь мир, персонажей и летопись?")) return;
+      pushUndoSnapshot();
+      autoSimRunning = false;
+      worldState = {
+        worldName: worldState.worldName,
+        worldDescription: worldState.worldDescription,
+        aiRules: worldState.aiRules || "",
+        turn: 0,
+        gridWidth: worldState.gridWidth || 60,
+        gridHeight: worldState.gridHeight || 60,
+        cellScaleValue: worldState.cellScaleValue || 1,
+        cellScaleUnit: worldState.cellScaleUnit || "км",
+        autonomyLevel: worldState.autonomyLevel || "medium",
+        weather: "☀️ Ясно",
+        worldClock: worldState.worldClock || { year: 1250, month: 5, day: 1, hour: 8 },
+        possessedCharId: null,
+        factions: [],
+        cells: {},
+        objects: [],
+        globalCharStats: getDefaultGlobalStats(),
+        chronicle: [],
+        dialogs: [],
+        items: [],
+        lastTurnMoves: [],
+        lastTurnMarkers: []
+      };
+      clearSelection();
+      saveToLocalStorage();
+      centerMap(true);
+      renderAllTabs();
+      drawMap();
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function escapeJs(str) {
+      return String(str ?? "").replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      if (!localStorage.getItem("sandbox_or_endpoint")) {
+        apiConfig.mode = "gas";
+        apiConfig.endpoint = DEFAULT_GAS_URL;
+        localStorage.setItem("sandbox_or_mode", "gas");
+        localStorage.setItem("sandbox_or_endpoint", DEFAULT_GAS_URL);
+      }
+      loadFromLocalStorage();
+      resizeCanvas();
+      centerMap(true);
+      renderAllTabs();
+      if (!apiConfig.apiKey) openModal("api-modal");
+    });
+  </script>
+</body>
+</html>
