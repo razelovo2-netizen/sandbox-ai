@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sandbox AI — Интерактивная инструкция по игре</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-card: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-ai: #8b5cf6;
+      --possess: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    /* Шапка сайта */
+    header {
+      background: rgba(30, 41, 59, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 14px 24px;
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand h1 {
+      font-size: 22px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand span {
+      font-size: 13px;
+      background: var(--bg-card);
+      padding: 3px 10px;
+      border-radius: 999px;
+      color: #cbd5e1;
+    }
+
+    .nav-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      background: var(--bg-dark);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: 0.15s;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+      border-color: var(--accent);
+    }
+
+    .nav-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    .section-page {
+      display: none;
+      flex-direction: column;
+      gap: 24px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .section-page.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.18), rgba(139, 92, 246, 0.18));
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      border-radius: 14px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero-banner h2 {
+      font-size: 24px;
+      color: #fff;
+    }
+
+    .hero-banner p {
+      color: #cbd5e1;
+      font-size: 15px;
+      max-width: 850px;
+    }
+
+    /* Интерактивная схема интерфейса */
+    .ui-explorer {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 920px) {
+      .ui-explorer {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .mockup-window {
+      background: #090d16;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      user-select: none;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.45);
+    }
+
+    .mockup-zone {
+      border: 2px solid #334155;
+      background: var(--bg-panel);
+      border-radius: 8px;
+      padding: 10px;
+      cursor: pointer;
+      transition: 0.18s;
+      position: relative;
+    }
+
+    .mockup-zone:hover {
+      border-color: #60a5fa;
+      background: rgba(59, 130, 246, 0.12);
+    }
+
+    .mockup-zone.selected {
+      border-color: #facc15;
+      background: rgba(250, 204, 21, 0.12);
+      box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.25);
+    }
+
+    .zone-label {
+      font-weight: 700;
+      font-size: 13px;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .zone-sub {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    .mockup-middle {
+      display: grid;
+      grid-template-columns: 135px 1fr 155px;
+      gap: 8px;
+      min-height: 290px;
+    }
+
+    .mockup-center-col {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mini-pill-row {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .mini-pill {
+      font-size: 10px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #cbd5e1;
+    }
+
+    /* Панель описания выбранной зоны */
+    .zone-details-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: sticky;
+      top: 84px;
+    }
+
+    .zone-details-card h3 {
+      font-size: 20px;
+      color: #60a5fa;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .item-explain-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .item-explain {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .item-explain strong {
+      color: #facc15;
+      font-size: 14px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .item-explain p {
+      font-size: 13.5px;
+      color: #cbd5e1;
+    }
+
+    /* Карточки в сетке */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 18px;
+    }
+
+    .info-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .info-card h3 {
+      font-size: 17px;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card p, .info-card li {
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    .info-card ul {
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .step-number {
+      background: var(--accent-ai);
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .badge-demo {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+    }
+
+    .badge-demo.static {
+      background: rgba(245, 158, 11, 0.2);
+      border-color: #f59e0b;
+      color: #fde68a;
+    }
+
+    .badge-demo.dynamic {
+      background: rgba(16, 185, 129, 0.18);
+      border-color: #10b981;
+      color: #a7f3d0;
+    }
+
+    .tip-box {
+      background: rgba(139, 92, 246, 0.12);
+      border-left: 4px solid var(--accent-ai);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      color: #e2e8f0;
+    }
+
+    .search-bar {
+      width: 260px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .search-bar:focus {
+      border-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <h1>🌌 Sandbox AI</h1>
+        <span>Справочник игрока</span>
+      </div>
+
+      <div class="nav-pills">
+        <button class="nav-btn active" onclick="openPage('ui-map', this)">🖥️ Интерактивная карта интерфейса</button>
+        <button class="nav-btn" onclick="openPage('quickstart', this)">🚀 Быстрый старт</button>
+        <button class="nav-btn" onclick="openPage('modes', this)">🕹️ Бог vs Вселение</button>
+        <button class="nav-btn" onclick="openPage('chars', this)">👥 Персонажи и Статусы</button>
+        <button class="nav-btn" onclick="openPage('ai-tips', this)">🧠 Настройка ИИ и Фракций</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- СТРАНИЦА 1: ИНТЕРАКТИВНАЯ СХЕМА ИНТЕРФЕЙСА -->
+    <section id="page-ui-map" class="section-page active">
+      <div class="hero-banner">
+        <h2>🖥️ Интерактивная схема интерфейса</h2>
+        <p>Кажется, что на экране много кнопок? Нажимай мышкой на любой блок на схеме ниже — и справа появится простая расшифровка, за что отвечает каждая кнопка в этой части экрана.</p>
+      </div>
+
+      <div class="ui-explorer">
+        <!-- Схема окна игры -->
+        <div class="mockup-window">
+          <!-- Зона 1: Верхняя панель -->
+          <div class="mockup-zone selected" onclick="selectZone('header', this)">
+            <div class="zone-label">
+              <span>1. Верхняя панель (Шапка мира)</span>
+              <span style="color:#facc15;">Нажми для разбора →</span>
+            </div>
+            <div class="zone-sub">Масштаб сетки, часы ГГ:ММ:ДД:ЧЧ, погода, Откат хода, Пресеты и API</div>
+            <div class="mini-pill-row">
+              <span class="mini-pill">🗺️ 50×50 (1 км)</span>
+              <span class="mini-pill">🕒 1250:05:12:09</span>
+              <span class="mini-pill">☀️ Ясно</span>
+              <span class="mini-pill">⏪ Откат</span>
+              <span class="mini-pill">📦 Пресеты миров</span>
+              <span class="mini-pill">🌍 Сеттинг</span>
+              <span class="mini-pill">⚙️ API</span>
+            </div>
+          </div>
+
+          <!-- Средний ряд -->
+          <div class="mockup-middle">
+            <!-- Зона 2: Левая панель -->
+            <div class="mockup-zone" onclick="selectZone('left', this)">
+              <div class="zone-label"><span>2. Левая панель</span></div>
+              <div class="zone-sub">Инструменты мыши, рисование зон с ИИ и ручное создание объектов</div>
+              <div class="mini-pill-row" style="margin-top:10px;">
+                <span class="mini-pill">🔍 Выбор</span>
+                <span class="mini-pill">🖌️ Кисть</span>
+                <span class="mini-pill">⬛ Квадрат</span>
+                <span class="mini-pill">✨ Заполнить ИИ</span>
+                <span class="mini-pill">👤 +Персонаж</span>
+              </div>
+            </div>
+
+            <!-- Центральная колонка: Карта + Панель вселения + Нижняя панель -->
+            <div class="mockup-center-col">
+              <!-- Зона 3: Карта -->
+              <div class="mockup-zone" style="flex:1; display:flex; flex-direction:column; justify-content:space-between; background:#111827;" onclick="selectZone('map', this)">
+                <div>
+                  <div class="zone-label"><span>3. Интерактивная карта мира</span></div>
+                  <div class="zone-sub">Клетки местности, границы фракций, иконки героев, стрелки путей и смена дня/ночи</div>
+                </div>
+                <div style="display:flex; justify-content:space-around; font-size:24px; padding:18px 0;">
+                  <span>🏰</span>
+                  <span>🛡️ ➔</span>
+                  <span>💬</span>
+                  <span>⚔️</span>
+                  <span>⚰️</span>
+                </div>
+                <div class="mini-pill-row">
+                  <span class="mini-pill">🧹 Скрыть стрелки</span>
+                  <span class="mini-pill">➕ Зум</span>
+                  <span class="mini-pill">🎯 Центр</span>
+                </div>
+              </div>
+
+              <!-- Зона 4: Панель вселения -->
+              <div class="mockup-zone" style="border-color:#10b981; background:rgba(16,185,129,0.12);" onclick="selectZone('possess', this)">
+                <div class="zone-label"><span style="color:#6ee7b7;">4. Полоса воплощения (Когда вы в теле героя)</span></div>
+                <div class="zone-sub">Появляется при нажатии «🕹️ Вселиться». Кнопки живого разговора и выхода из тела</div>
+              </div>
+
+              <!-- Зона 5: Нижняя панель симуляции -->
+              <div class="mockup-zone" onclick="selectZone('bottom', this)">
+                <div class="zone-label"><span>5. Нижняя панель (Управление ходом и временем)</span></div>
+                <div class="zone-sub">Ввод событий или действий героя, выбор 1–5 ходов, шаг времени и Авто-жизнь</div>
+                <div class="mini-pill-row">
+                  <span class="mini-pill">1–5 ходов</span>
+                  <span class="mini-pill">Часы / Дни / Годы</span>
+                  <span class="mini-pill">🌱 Авто-жизнь</span>
+                  <span class="mini-pill">▶️ Симулировать</span>
+                  <span class="mini-pill">🔄 Авто-ход</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Зона 6: Правая панель -->
+            <div class="mockup-zone" onclick="selectZone('right', this)">
+              <div class="zone-label"><span>6. Правая панель</span></div>
+              <div class="zone-sub">6 вкладок базы знаний о мире</div>
+              <div class="mini-pill-row" style="margin-top:10px; flex-direction:column;">
+                <span class="mini-pill">📍 Клетка</span>
+                <span class="mini-pill">👥 Герои (и Павшие)</span>
+                <span class="mini-pill">🏰 Фракции</span>
+                <span class="mini-pill">📜 Летопись</span>
+                <span class="mini-pill">💬 Диалоги</span>
+                <span class="mini-pill">🎒 Предметы</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Правая карточка с подробным описанием выбранной зоны -->
+        <div class="zone-details-card" id="zone-details-box">
+          <!-- Заполняется скриптом -->
+        </div>
+      </div>
+    </section>
+
+    <!-- СТРАНИЦА 2: БЫСТРЫЙ СТАРТ ЗА 1 МИНУТУ -->
+    <section id="page-quickstart" class="section-page">
+      <div class="hero-banner">
+        <h2>🚀 Быстрый старт: как начать играть за 1 минуту</h2>
+        <p>Никаких сложных настроек не требуется — обход блокировок для РФ уже встроен в игру по умолчанию.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="info-card">
+          <h3><span class="step-number">1</span> Вставь ключ API</h3>
+          <p>В правом верхнем углу нажми кнопку <b>«⚙️ API»</b>. Режим <i>«🚀 Через Google Скрипт (БЕЗ VPN в РФ)»</i> уже включён.</p>
+          <ul>
+            <li>Вставь свой ключ от OpenRouter (`sk-or-v1-...`).</li>
+            <li>Выбери модель (например, быструю <b>google/gemini-2.5-flash</b> или <b>deepseek/deepseek-chat</b>).</li>
+            <li>Нажми <b>«Сохранить настройки API»</b>.</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3><span class="step-number">2</span> Выбери пресет или создай мир</h3>
+          <p>Самый быстрый способ сразу ворваться в игру — нажать фиолетовую кнопку <b>«📦 Пресеты миров»</b> в верхней шапке.</p>
+          <ul>
+            <li>Выбери один из 5 готовых миров: <b>Средневековье, Современный мегаполис, Киберпанк 2099, Зомби-апокалипсис</b> или <b>Другая планета</b>.</li>
+            <li>Либо нажми <b>«🌍 Сеттинг и ИИ»</b>, чтобы придумать собственную вселенную с нуля!</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3><span class="step-number">3</span> Запусти ход или вселись в героя</h3>
+          <p>Теперь у тебя полная свобода действий:</p>
+          <ul>
+            <li><b>Наблюдай:</b> оставь нижнее поле пустым и нажми <b>«▶️ Симулировать мир»</b> — города сами начнут расти, а NPC будут общаться и строить здания.</li>
+            <li><b>Управляй миром:</b> напиши внизу любое событие (например, <i>«К городу приближается дракон»</i>).</li>
+            <li><b>Вселись в персонажа:</b> открой вкладку <b>«👥 Герои»</b> справа и нажми <b>«🕹️»</b> на любом персонаже!</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tip-box">
+        💡 <b>Что делать, если ИИ сделал что-то не так?</b> В верхней панели всегда есть кнопка <b>«⏪ Откат»</b>. Она мгновенно возвращает карту, время и всех персонажей на предыдущий ход (хранит до 8 последних шагов).
+      </div>
+    </section>
+
+    <!-- СТРАНИЦА 3: РЕЖИМ БОГА VS РЕЖИМ ВСЕЛЕНИЯ -->
+    <section id="page-modes" class="section-page">
+      <div class="hero-banner">
+        <h2>🎭 Два режима игры: Режим Бога и Вселение в персонажа</h2>
+        <p>Ты можешь переключаться между ролью всемогущего создателя мира и ролью конкретного жителя этого мира в любой момент.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="info-card">
+          <h3>⚡ Режим Бога (Взгляд сверху)</h3>
+          <p>Активен по умолчанию, пока ты ни в кого не вселился.</p>
+          <ul>
+            <li><b>Глобальные события:</b> всё, что ты пишешь в нижнем поле, воспринимается ИИ как закон природы или событие свыше (войны, метеориты, появление подземелий, указы королей).</li>
+            <li><b>Рисование регионов:</b> выдели клетки на карте инструментом <b>«🖌️ Кисть»</b> или <b>«⬛ Квадрат»</b>, напиши название и описание и нажми <b>«✨ Заполнить местность через ИИ»</b> — нейросеть сама создаст там постройки, жителей и предметы.</li>
+            <li><b>Полная автономность (🌱 Авто-жизнь):</b> если ничего не писать в поле команд и нажать <b>«▶️ Симулировать мир»</b> (или включить <b>«🔄 Авто-ход»</b>), мир будет развиваться сам.</li>
+          </ul>
+        </div>
+
+        <div class="info-card" style="border-color: var(--possess);">
+          <h3 style="color:#6ee7b7;">🕹️ Режим Вселения (От первого лица)</h3>
+          <p>Включается кнопкой <b>«🕹️»</b> на карточке любого живого персонажа (во вкладке <b>«👥 Герои»</b> или <b>«📍 Клетка»</b>).</p>
+          <ul>
+            <li><b>Личные действия:</b> нижнее поле ввода превращается в действия твоего героя. Пиши от первого лица: <i>«Иду в таверну, заказываю эль и ищу наёмников»</i>. ИИ не будет принимать решения за твоего персонажа без твоего ведома!</li>
+            <li><b>Живые разговоры (💬 Поговорить с NPC):</b> на зелёной панели вселения нажми <b>«💬 Поговорить с NPC»</b>, выбери любого собеседника и напиши свою фразу. Игра сама посчитает расстояние между вами в метрах или километрах!</li>
+            <li><b>Продолжение переписок:</b> во вкладке <b>«💬 Диалоги»</b> под каждым разговором есть строка ответа — можно вести долгие беседы, которые автоматически меняют <b>❤️ Отношения</b> собеседника к тебе.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- СТРАНИЦА 4: ПЕРСОНАЖИ, СТАТУСЫ, ОТНОШЕНИЯ И СМЕРТЬ -->
+    <section id="page-chars" class="section-page">
+      <div class="hero-banner">
+        <h2>👥 Как устроены Персонажи, Статусы, Отношения и Смерть</h2>
+        <p>В Sandbox AI ты можешь конструировать любую ролевую систему (РПГ с уровнями, выживание с голодом или социальный симулятор) прямо на лету.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="info-card">
+          <h3>🔒 Статичные vs 🔄 Изменяемые статусы</h3>
+          <p>У каждого персонажа есть список характеристик (по умолчанию туда входят <b>Внешность, Характер, Одежда</b> и <b>Инвентарь</b>). Возле каждого статуса есть кнопка-переключатель:</p>
+          <ul>
+            <li><span class="badge-demo static">🔒 Статич.</span> — <b>Защищено от изменений ИИ.</b> Включено для Внешности, Характера и Биографии. Даже через 50 ходов персонаж останется собой, и ИИ не перепишет его внешность боевыми сводками.</li>
+            <li><span class="badge-demo dynamic">🔄 Измен.</span> — <b>Обновляется нейросетью по ходу игры.</b> Используется для Одежды, Инвентаря, Денег, Здоровья, Уровня или Опыта.</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3>⚙️ Общие статусы мира и подсказки в (скобочках)</h3>
+          <p>Во вкладке <b>«👥 Герои»</b> есть блок <b>«⚙️ Общие статусы для всех персонажей»</b>. Любой добавленный туда статус автоматически появляется у всех жителей мира.</p>
+          <ul>
+            <li>Ты можешь просто написать название, например: <code>Уровень</code>.</li>
+            <li>А если нужно объяснить ИИ особое правило работы этого статуса, напиши его в круглых скобках: <br/><code>Опыт (от 0 до 100, растёт за бои и квесты, на 100 повышает Уровень)</code>.</li>
+            <li>ИИ прочитает подсказку в скобках и будет сам начислять опыт в каждом ходу!</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3>❤️ Память и Отношения между героями</h3>
+          <p>Персонажи помнят, с кем они общались, дружили или враждовали:</p>
+          <ul>
+            <li>На карточке героя розовыми плашками отображаются его отношения с другими персонажами (например: <i>«❤️ Сир Роланд: Доверяет как боевому товарищу»</i>).</li>
+            <li>Отношения обновляются автоматически после диалогов и совместных событий, а также редактируются вручную в <b>«👤 Досье персонажа»</b>.</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3>💀 Смерть, Останки и Архив Павших</h3>
+          <p>Когда персонаж погибает в бою или от катастрофы, он не пропадает бесследно:</p>
+          <ul>
+            <li>На клетке его гибели появляется объект <b>«⚰️ Останки: Имя»</b>, где сохраняется весь его инвентарь и экипировка — другие персонажи могут прийти на эту клетку и забрать вещи себе.</li>
+            <li>Сам погибший переносится в фильтр <b>«💀 Павшие»</b> во вкладке <b>«👥 Герои»</b>. При желании в его досье можно нажать кнопку <b>«✨ Воскресить»</b>!</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- СТРАНИЦА 5: ВРЕМЯ, МАСШТАБ, ФРАКЦИИ И НАСТРОЙКА ИИ -->
+    <section id="page-ai-tips" class="section-page">
+      <div class="hero-banner">
+        <h2>🧠 Время, Масштаб, Фракции и Директивы для ИИ</h2>
+        <p>Как сделать так, чтобы в Средневековье не появлялись автоматы, а ИИ описывал сцены именно в том стиле и с той откровенностью, которую ты хочешь.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="info-card">
+          <h3>🕒 Время ГГ:ММ:ДД:ЧЧ и Эпоха</h3>
+          <p>Кликни по часам в верхней шапке, чтобы выставить любой год, месяц, день, час и погоду.</p>
+          <ul>
+            <li>ИИ строго следит за годом <b>ГГ</b>: если стоит <code>1250</code> год, в мире не появятся смартфоны и винтовки — для связи на расстоянии будут использоваться только гонцы, голуби или магия.</li>
+            <li>Час <b>ЧЧ</b> меняет освещение на карте: ночью зажигаются огни вокруг городов!</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3>📐 Масштаб: от 5×5 м до 150×150 км</h3>
+          <p>Нажми кнопку <b>«📐 Масштаб»</b> вверху, чтобы задать размер сетки и размер 1 клетки:</p>
+          <ul>
+            <li><b>В метрах (м):</b> идеально для одного здания, пляжа, острова или квартала (например, <code>15×15 клеток</code> по <code>20 метров</code>).</li>
+            <li><b>В километрах (км):</b> идеально для войн королевств, стран и планет (например, <code>60×60</code> или <code>150×150 клеток</code> по <code>1 км</code>).</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3>🏰 Фракции и Границы</h3>
+          <p>Во вкладке <b>«🏰 Фракции»</b> можно создавать государства, кланы, банды или корпорации.</p>
+          <ul>
+            <li>Клетки и персонажи одной фракции обводятся на карте её цветом.</li>
+            <li>ИИ учитывает дипломатию фракций (кто с кем воюет или торгует) и сам расширяет их границы в ходе симуляции.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="info-card" style="border-color: var(--accent-ai);">
+        <h3 style="color:#c084fc;">📜 Как настроить стиль ИИ и отключить цензуру (Директивы Мастера)</h3>
+        <p>Если ты хочешь создать мир со специфической атмосферой (например, мрачный постапокалипсис с жёсткими боями или откровенный ролевой мир 18+ без стеснения в выражениях):</p>
+        <ul>
+          <li>Открой вверху <b>«🌍 Сеттинг и ИИ»</b> и заполни нижнее поле <b>«📜 Правила, тон повествования и инструкции для ИИ»</b>. Всё, что написано там, имеет высший приоритет для нейросети.</li>
+          <li><b>Выбор модели в «⚙️ API»:</b>
+            <ul>
+              <li><b>google/gemini-2.5-flash</b> — самая быстрая и стабильная модель для любых приключений и стратегий.</li>
+              <li><b>deepseek/deepseek-chat (DeepSeek V3)</b> и <b>nousresearch/hermes-3-llama-3.1-70b</b> — отлично подходят для взрослых (18+) и раскрепощённых ролевых сценариев без лишней морали и цензуры.</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    const ZONES_DATA = {
+      header: {
+        title: "1. Верхняя панель (Шапка мира)",
+        items: [
+          {
+            name: "🗺️ Сетка (Масштаб мира)",
+            desc: "Показывает текущий размер карты (например, 50×50) и чему равна 1 клетка (в метрах или километрах). Кликни по ней, чтобы в любой момент изменить размер карты!"
+          },
+          {
+            name: "🕒 Часы мира (ГГ:ММ:ДД:ЧЧ) и Погода",
+            desc: "Текущий Год, Месяц, День и Час. ИИ ориентируется на год, чтобы понимать технологическую эпоху, а час суток меняет освещение карты (утро, день, вечер, ночь). Клик по погоде меняет её (Ясно, Дождь, Туман, Гроза)."
+          },
+          {
+            name: "⏪ Откат (Машина времени)",
+            desc: "Если в последнем ходу ИИ сделал что-то не то или погиб любимый герой — нажми «⏪ Откат», чтобы вернуть весь мир на шаг назад (хранит до 8 ходов)."
+          },
+          {
+            name: "📦 Пресеты миров",
+            desc: "Готовые проработанные миры для быстрого старта в 1 клик: Средневековье, Современный мегаполис, Киберпанк 2099, Зомби-апокалипсис и Другая планета."
+          },
+          {
+            name: "🌍 Сеттинг и ИИ / ⚙️ API / 💾 Скачать",
+            desc: "В «🌍 Сеттинг» задаётся описание мира и правила тона для ИИ. В «⚙️ API» вставляется ключ OpenRouter и выбирается модель. Кнопки 💾 и 📂 позволяют сохранить свой мир в файл .json и скинуть другу!"
+          }
+        ]
+      },
+      left: {
+        title: "2. Левая панель (Инструменты и Созидание)",
+        items: [
+          {
+            name: "🛠️ Инструмент карты (Выбор / Камера / Кисть / Квадрат)",
+            desc: "«🔍 Выбор клетки» — клик по клетке показывает всё, что на ней есть. «🖌️ Кисть» и «⬛ Квадрат» позволяют выделить участок карты для закраски или генерации через ИИ."
+          },
+          {
+            name: "🎨 Рисование и «✨ Заполнить местность через ИИ»",
+            desc: "Выдели несколько клеток на карте, выбери цвет, фракцию, напиши название (например, «Заброшенный бункер») и описание. Если нажать «✨ Заполнить через ИИ», нейросеть сама расставит там здания, персонажей и предметы!"
+          },
+          {
+            name: "➕ Создать объект / 👤 +Персонаж",
+            desc: "Позволяет вручную добавить на выбранную клетку город, постройку, предмет или открыть подробный конструктор нового персонажа."
+          }
+        ]
+      },
+      map: {
+        title: "3. Интерактивная карта мира",
+        items: [
+          {
+            name: "🖱️ Управление камерой",
+            desc: "Колёсико мыши приближает и отдаляет карту. Зажатая Правая кнопка мыши (или зажатый Пробел + левая кнопка) двигает камеру в любом режиме."
+          },
+          {
+            name: "👣 Голубые пунктирные стрелки и значки событий",
+            desc: "После каждого хода стрелки показывают, кто куда переместился. Значки над клетками показывают события последнего хода: 💬 — был диалог, 🏗️ — построено здание, 💀 — кто-то погиб. Кнопка «🧹 Скрыть стрелки» очищает их."
+          },
+          {
+            name: "🚩 Цветные рамки клеток",
+            desc: "Жёлтая рамка — выбранная тобой клетка. Изумрудная рамка — клетка, где стоит твой персонаж (в режиме вселения). Цветные рамки вокруг регионов — границы территорий фракций."
+          }
+        ]
+      },
+      possess: {
+        title: "4. Полоса воплощения (Режим игры за персонажа)",
+        items: [
+          {
+            name: "🕹️ Как сюда попасть?",
+            desc: "Нажми кнопку «🕹️» на карточке любого живого героя во вкладке «👥 Герои» или «📍 Клетка». Ты вселишься в его тело!"
+          },
+          {
+            name: "💬 Поговорить с NPC",
+            desc: "Открывает окно живого диалога: выбери любого персонажа мира, укажи причину и скажи ему что угодно от первого лица. ИИ сразу ответит за собеседника и обновит ваши взаимные ❤️ Отношения!"
+          },
+          {
+            name: "👻 Выйти в режим Бога",
+            desc: "В любой момент возвращает тебя из тела персонажа обратно в режим всемогущего наблюдателя."
+          }
+        ]
+      },
+      bottom: {
+        title: "5. Нижняя панель (Управление ходом и симуляцией)",
+        items: [
+          {
+            name: "⚡ Поле ввода команд / действий",
+            desc: "В режиме Бога пиши сюда любые события для мира (или оставляй пустым!). В режиме Вселения пиши сюда действия и слова своего персонажа."
+          },
+          {
+            name: "⏱️ Кол-во ходов (1–5) и Шаг времени",
+            desc: "Выбирай, сколько шагов просчитать за один раз (от 1 до 5) и сколько времени проходит за 1 ход (в Часах, Днях, Месяцах или Годах)."
+          },
+          {
+            name: "🌱 Авто-жизнь мира (Спокойная / Активная / Бурная)",
+            desc: "Отвечает за то, насколько активно мир развивается САМ без участия игрока. На «Активной» и «Бурной» города сами строят новые здания, осваивают клетки и привлекают новых персонажей каждый ход."
+          },
+          {
+            name: "▶️ Симулировать мир и 🔄 Авто-ход",
+            desc: "«▶️ Симулировать» запускает расчёт хода. А кнопка «🔄 Авто-ход» включает автопилот: игра сама будет делать ход за ходом, пока ты наблюдаешь за развитием мира!"
+          }
+        ]
+      },
+      right: {
+        title: "6. Правая панель (6 вкладок базы данных мира)",
+        items: [
+          {
+            name: "📍 Клетка",
+            desc: "Показывает подробное описание выбранной точки на карте, какой фракции она принадлежит и список всех зданий, предметов и героев на ней."
+          },
+          {
+            name: "👥 Герои (Живые и 💀 Павшие)",
+            desc: "Список всех персонажей мира + конструктор общих статусов (например, Уровень, Опыт, Деньги). Здесь можно вселиться в героя, открыть его досье или посмотреть архив погибших."
+          },
+          {
+            name: "🏰 Фракции",
+            desc: "Управление королевствами, кланами и группировками: их цвета на карте, описание, дипломатия (кто с кем воюет) и количество территорий."
+          },
+          {
+            name: "📜 Летопись, 💬 Диалоги и 🎒 Предметы",
+            desc: "В «📜 Летописи» хранится вся история мира по ходам. В «💬 Диалогах» — все разговоры персонажей (с возможностью ответить от лица своего героя). В «🎒 Предметах» — энциклопедия всех найденных и созданных вещей."
+          }
+        ]
+      }
+    };
+
+    function selectZone(zoneKey, el) {
+      document.querySelectorAll(".mockup-zone").forEach((z) => z.classList.remove("selected"));
+      if (el) el.classList.add("selected");
+
+      const data = ZONES_DATA[zoneKey];
+      const box = document.getElementById("zone-details-box");
+      if (!data || !box) return;
+
+      box.innerHTML = `
+        <h3>${data.title}</h3>
+        <div class="item-explain-list">
+          ${data.items.map((item) => `
+            <div class="item-explain">
+              <strong>${item.name}</strong>
+              <p>${item.desc}</p>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function openPage(pageId, btnEl) {
+      document.querySelectorAll(".section-page").forEach((p) => p.classList.remove("active"));
+      document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
+      document.getElementById(`page-${pageId}`).classList.add("active");
+      if (btnEl) btnEl.classList.add("active");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      selectZone("header", document.querySelector(".mockup-zone"));
+    });
+  </script>
+</body>
+</html>
